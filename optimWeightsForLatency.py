@@ -1,6 +1,7 @@
 import random
 import heapq
-import itertools
+from collections import Counter
+from itertools import chain, repeat, islice, count, combinations
 import string
 import scipy.special
 import time
@@ -111,7 +112,7 @@ def exhaustive_search(n,f,delta,Mpropose,Mwrite,r):
     start = time.time()
     curConfig = 0
     curLeader = 0
-    for vMaxPos in itertools.combinations(range(n), 2*f):
+    for vMaxPos in combinations(range(n), 2*f):
         curWeights = [1] * n
 
         for i in vMaxPos:
