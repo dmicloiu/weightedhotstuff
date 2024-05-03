@@ -255,12 +255,12 @@ Mwrite = m_utils.generateRandomMatrix(n, 0, 1000)
 ##        Mpropose[leaderId][j] = 5
 ##        Mwrite[leaderId][j] = 5
 
-print(m_utils.printMatrix(Mpropose))
-print(m_utils.printMatrix(Mwrite))
+#print(m_utils.printMatrix(Mpropose))
+#print(m_utils.printMatrix(Mwrite))
 
-print(predictLatency(n, f, delta, weights, leaderId, Mpropose, Mwrite, rounds))
+#print(predictLatency(n, f, delta, weights, leaderId, Mpropose, Mwrite, rounds))
 
 ##exhaustive_search(n,f,delta,Mpropose,Mwrite,rounds)
-##suffix=''
-##simulated_annealing(n,f,delta,Mpropose,Mwrite,rounds,suffix)
+suffix=''
+simulated_annealing(n,f,delta,Mpropose,Mwrite,rounds,suffix)
 
