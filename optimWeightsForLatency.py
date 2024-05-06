@@ -224,7 +224,7 @@ def simulated_annealing(n,f,delta,Mpropose,Mwrite,r,suffix):
     print('--------------------------------')
     print('Configurations examined: {}    time needed:{}'.format(step,end-start))
     print('Final solution latency:', bestLat)
-    print('Best Configuration:  R_max: {}  | R_min: {}  with leader {}'.format(r_max,r_min,bestLeader))
+    print('Best Configuration:  R_max: {}, weight: {} | R_min: {}, weight: {} with leader {}'.format(r_max,vmax,r_min,vmin,bestLeader))
     print('initTemp:{} finalTemp:{}'.format(init_temp,temp))
     print('coolingRate:{} threshold:{} jumps:{}'.format(theta,t_min,jumps))
 
@@ -242,6 +242,8 @@ for i in range(2*f):
     weights.append(vmax)
 for i in range(n-2*f):
     weights.append(vmin)
+
+# print(weights)
 
 leaderId = 0
 rounds = 10

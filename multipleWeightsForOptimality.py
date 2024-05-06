@@ -94,6 +94,7 @@ def simulated_annealing(n, f, delta, Mpropose, Mwrite, r, suffix):
     ## SHIFT IN 1 - N
     curWeights = [1] * n
     for i in range(1, 2 * f + 1):
+        # change the usual weighting scheme
         curWeights[i - 1] = 1 + i * delta / m
     curLeader = 0
 
@@ -163,8 +164,10 @@ f = 1  # max num of faulty replicas
 delta = 1  # additional replicas
 
 n = 3 * f + 1 + delta  # total num of replicas
+faulty_max = 2 * f
 
-m = f * (f + 1) / 2  # weighting coefficient
+### M is computed with the help of the number of Vmax replicas
+m = faulty_max * (faulty_max + 1) / 2  # weighting coefficient
 
 ## Vmin is same as V0 in the support document
 vmin = 1  # n - 2f replicas will still have minimal weight 1 -> to ensure avilability of quorum formation
@@ -179,6 +182,8 @@ for i in range(1, 2 * f + 1):
 
 for i in range(n - 2 * f):
     weights.append(vmin)
+
+# print(weights)
 
 leaderId = 0
 rounds = 10
