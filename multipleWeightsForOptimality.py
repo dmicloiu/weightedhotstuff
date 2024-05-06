@@ -71,9 +71,9 @@ def convert_bestweights_to_rmax_rmin(best_weights):
     for rep_id in replicas:
         ## !!! VERIFY IF THE WEIGHTING SCHEME PERMITS THE CUSTOM WEIGHTS TO BE 1
         if best_weights[rep_id] != vmin:
-            r_max.append(replicas[rep_id])
+            r_max.append((replicas[rep_id], best_weights[rep_id]))
         else:
-            r_min.append(replicas[rep_id])
+            r_min.append((replicas[rep_id], best_weights[rep_id]))
     return r_max, r_min
 
 
@@ -91,9 +91,10 @@ def simulated_annealing(n, f, delta, Mpropose, Mwrite, r, suffix):
     r_max = []
     r_min = []
 
+    ## SHIFT IN 1 - N
     curWeights = [1] * n
-    for i in range(2 * f):
-        curWeights[i] = 1 + delta / f
+    for i in range(1, 2 * f + 1):
+        curWeights[i - 1] = 1 + i * delta / m
     curLeader = 0
 
     curLat = predictLatency(n, f, delta, curWeights, curLeader, Mpropose, Mwrite, r)
@@ -109,7 +110,7 @@ def simulated_annealing(n, f, delta, Mpropose, Mwrite, r, suffix):
         newLeader = curLeader
         while True:
             replicaFrom = random.randint(0, n - 1)
-            if curWeights[replicaFrom] == 1 + delta / f:
+            if curWeights[replicaFrom] != vmin:
                 break
         while True:
             replicaTo = random.randint(0, n - 1)
@@ -171,7 +172,7 @@ vmin = 1  # n - 2f replicas will still have minimal weight 1 -> to ensure avilab
 weights = []
 ## change to start from 1 so that the weighting scheme is appropriate
 for i in range(1, 2 * f + 1):
-    weight_i = i * delta / m
+    weight_i = 1 + i * delta / m
     ### observation -> we assign to the reamining f replicas each a diff weight Vi -> if leader 0, it will take weight delta / m
     # -> hence ask if we should do it in reverse order to give higher probability to the leader
     weights.append(weight_i)
