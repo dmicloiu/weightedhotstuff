@@ -91,7 +91,6 @@ def simulated_annealing(n, f, delta, Mpropose, Mwrite, r, suffix):
     r_max = []
     r_min = []
 
-    ## SHIFT IN 1 - N
     curWeights = [1] * n
     for i in range(1, 2 * f + 1):
         # change the usual weighting scheme
