@@ -166,7 +166,7 @@ n = 3 * f + 1 + delta  # total num of replicas
 faulty_max = 2 * f
 
 ### M is computed with the help of the number of Vmax replicas
-m = faulty_max * (faulty_max + 1) / 2  # weighting coefficient
+m = f * (faulty_max + 1) / 2  # weighting coefficient
 
 ## Vmin is same as V0 in the support document
 vmin = 1  # n - 2f replicas will still have minimal weight 1 -> to ensure avilability of quorum formation
