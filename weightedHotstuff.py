@@ -368,7 +368,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-### EXPERIMENT 5
+### EXPERIMENT 6
 print("------------ EXPERIMENT 6 ------------")
 
 simulations = 10000
