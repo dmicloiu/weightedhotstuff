@@ -59,7 +59,7 @@ def formQuorumBasic(LMessageReceived, quorumWeight):
 
 
 def predictLatencyBasicHotstuff(n, f, Lnew_view, Lprepare, Lprecommit, Lcommit):
-    quorumWeight = 2 * f + 1  # quorum formation condition
+    quorumWeight = n - f  # quorum formation condition
 
     # PREPARE phase -> leader waits for quorum formation with (n - f) NEW-VIEW messages from replicas
     tPREPARE = formQuorumBasic(Lnew_view, quorumWeight)
@@ -258,7 +258,7 @@ for _ in range(simulations):
 averageDifference /= simulations
 
 print(f"Basic Hotstuff is faster than the weighted version in {timesBasicIsFaster} view simulations.")
-print(f"The two algorithms have equal performance in {timesEqualPerformance} view simulations, accounting for {timesEqualPerformance * 100 / simulations}% of simulations.")
+print(f"The two algorithms have equal performance in {timesEqualPerformance} simulations.")
 print(f"Weighted Hotstuff is on average with {averageDifference} faster than the Basic version.")
 print("\n")
 
