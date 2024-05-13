@@ -2,11 +2,10 @@ import random
 import heapq
 from collections import Counter
 from itertools import chain, repeat, islice, count, combinations
-import string
 import scipy.special
 import time
 import matrix_utils as m_utils
-##import triplet_utils as t_utils
+import matplotlib.pyplot as plt
 import math
 
 
@@ -61,18 +60,18 @@ def predictLatency(n, f, delta, weights, leaderId, Mpropose, Mwrite, rounds):  #
             if i != leaderId:  # not in Alg. 2
                 tProposed[i] = max(tProposed[leaderId] + Mpropose[leaderId][i],
                                    tAccepted[i])  # added tProposed[leaderId]
-        print('sending WRITE times', tProposed)
+        # print('sending WRITE times', tProposed)
 
         tWritten = formQV(n, Mwrite, tProposed, weights, quorumWeight)
-        print('sending ACCEPT times', tWritten)
+        # print('sending ACCEPT times', tWritten)
 
         tAccepted = formQV(n, Mwrite, tWritten, weights, quorumWeight)
-        print('ACCEPTED times', tAccepted, '\n')
+        # print('ACCEPTED times', tAccepted, '\n')
 
         consensusLatencies[r] = tAccepted[leaderId] - tProposed[leaderId]
         tProposed[leaderId] = tAccepted[leaderId]  # not in Alg. 2
 
-    print(consensusLatencies)
+    # print(consensusLatencies)
     return sum(consensusLatencies) / len(consensusLatencies)
 
 
@@ -150,6 +149,17 @@ def convert_bestweights_to_rmax_rmin(best_weights, vmax):
             r_min.append(replicas[rep_id])
     return r_max, r_min
 
+def convert_bestweights_to_rmax_rmin_custom(best_weights):
+    replicas = [i for i in range(len(best_weights))]
+    r_max = []
+    r_min = []
+    for rep_id in replicas:
+        ## !!! VERIFY IF THE WEIGHTING SCHEME PERMITS THE CUSTOM WEIGHTS TO BE 1
+        if best_weights[rep_id] != vmin:
+            r_max.append((replicas[rep_id], best_weights[rep_id]))
+        else:
+            r_min.append((replicas[rep_id], best_weights[rep_id]))
+    return r_max, r_min
 
 def simulated_annealing(n, f, delta, Mpropose, Mwrite, r, suffix):
     start = time.time()
@@ -231,14 +241,97 @@ def simulated_annealing(n, f, delta, Mpropose, Mwrite, r, suffix):
     print('initTemp:{} finalTemp:{}'.format(init_temp, temp))
     print('coolingRate:{} threshold:{} jumps:{}'.format(theta, t_min, jumps))
 
+def simulated_annealing_custom_weights(n, f, delta, Mpropose, Mwrite, r, suffix):
+    start = time.time()
+
+    random.seed(500)
+
+    step = 0
+    step_max = 1000000
+    temp = 120
+    init_temp = temp
+    theta = 0.0055
+    t_min = 0.2
+    r_max = []
+    r_min = []
+
+    curWeights = [1] * n
+    for i in range(1, 2 * f + 1):
+        # change the usual weighting scheme
+        curWeights[i - 1] = 1 + i * delta / m
+    curLeader = 0
+
+    curLat = predictLatency(n, f, delta, curWeights, curLeader, Mpropose, Mwrite, r)
+
+    bestLat = curLat
+    bestLeader = -1
+    bestWeights = []
+    jumps = 0
+
+    while step < step_max and temp > t_min:
+        replicaFrom = -1
+        replicaTo = -1
+        newLeader = curLeader
+        while True:
+            replicaFrom = random.randint(0, n - 1)
+            if curWeights[replicaFrom] != vmin:
+                break
+        while True:
+            replicaTo = random.randint(0, n - 1)
+            if replicaTo != replicaFrom:
+                break
+
+        if replicaFrom == curLeader:
+            newLeader = replicaTo
+
+        newWeights = curWeights.copy()
+        newWeights[replicaTo] = curWeights[replicaFrom]
+        newWeights[replicaFrom] = curWeights[replicaTo]
+        ##    print(newWeights)
+
+        newLat = predictLatency(n, f, delta, newWeights, newLeader, Mpropose, Mwrite, r)
+
+        if newLat < curLat:
+            curLeader = newLeader
+            curWeights = newWeights
+        else:
+            rand = random.uniform(0, 1)
+            if rand < math.exp(-(newLat - curLat) / temp):
+                jumps = jumps + 1
+                curLeader = newLeader
+                curWeights = newWeights
+
+        if newLat < bestLat:
+            bestLat = newLat
+            bestLeader = newLeader
+            bestWeights = newWeights
+
+        temp = temp * (1 - theta)
+        step += 1
+
+    end = time.time()
+    r_max, r_min = convert_bestweights_to_rmax_rmin_custom(bestWeights)
+
+    print('--------------------------------')
+    print('--------' + suffix + ' Multiple Weights Simulated annealing')
+    print('--------------------------------')
+    print('Configurations examined: {}    time needed:{}'.format(step, end - start))
+    print('Final solution latency:', bestLat)
+    print('Best Configuration:  R_max: {}  | R_min: {}  with leader {}'.format(r_max, r_min, bestLeader))
+    print('initTemp:{} finalTemp:{}'.format(init_temp, temp))
+    print('coolingRate:{} threshold:{} jumps:{}'.format(theta, t_min, jumps))
 
 f = 1  # max num of faulty replicas
 delta = 1  # additional replicas
+faulty_max = 2 * f
 
 n = 3 * f + 1 + delta  # total num of replicas
 
 vmax = 1 + delta / f  # 2f replicas
 vmin = 1  # n-2f replicas
+
+### M is computed with the help of the number of Vmax replicas
+m = f * (faulty_max + 1) / 2  # weighting coefficient
 
 weights = []
 for i in range(2 * f):
@@ -246,13 +339,30 @@ for i in range(2 * f):
 for i in range(n - 2 * f):
     weights.append(vmin)
 
-# print(weights)
+custom_weights = []
+## change to start from 1 so that the weighting scheme is appropriate
+for i in range(1, 2 * f + 1):
+    weight_i = 1 + i * delta / m
+    ### observation -> we assign to the reamining f replicas each a diff weight Vi -> if leader 0, it will take weight delta / m
+    # -> hence ask if we should do it in reverse order to give higher probability to the leader
+    custom_weights.append(weight_i)
 
-leaderId = 0
+for i in range(n - 2 * f):
+    custom_weights.append(vmin)
+
+print(weights)
+print("//////////////////////////")
+print(custom_weights)
+
+leaderId = 1
 rounds = 10
 
 Mpropose = m_utils.generateRandomMatrix(n, 0, 1000)
 Mwrite = m_utils.generateRandomMatrix(n, 0, 1000)
+
+# print(Mpropose)
+# print("//////////////////////////")
+# print(Mwrite)
 
 # to artificially throttle the leader (sometimes)
 ##for j in range(n):
@@ -266,5 +376,53 @@ Mwrite = m_utils.generateRandomMatrix(n, 0, 1000)
 # print(predictLatency(n, f, delta, weights, leaderId, Mpropose, Mwrite, rounds))
 
 ##exhaustive_search(n,f,delta,Mpropose,Mwrite,rounds)
-suffix = ''
-simulated_annealing(n, f, delta, Mpropose, Mwrite, rounds, suffix)
+#
+# suffix = ''
+# simulated_annealing(n, f, delta, Mpropose, Mwrite, rounds, suffix)
+# simulated_annealing_custom_weights(n, f, delta, Mpropose, Mwrite, rounds, suffix)
+
+### EXPERIMENT
+simulations = 10000
+
+# highest weight repica gets to be the leader
+leaderId = 1
+failingReplica = 2
+
+sameRecoveryPerformance = 0
+betterRecoveryPerformance = 0
+for _ in range(simulations):
+    # generate different network scheme
+    Mpropose = m_utils.generateRandomMatrix(n, 0, 1000)
+    Mwrite = m_utils.generateRandomMatrix(n, 0, 1000)
+
+
+    awareWeightLatencyBefore = predictLatency(n, f, delta, weights, leaderId, Mpropose, Mwrite, rounds)
+    customWeightLatencyBefore = predictLatency(n, f, delta, custom_weights, leaderId, Mpropose, Mwrite, rounds)
+
+    # impose failing behavior of replica
+    for i in range(n):
+        Mpropose[i][failingReplica] = 1e6
+        Mwrite[i][failingReplica] = 1e6
+
+    awareWeightLatencyAfter = predictLatency(n, f, delta, weights, leaderId, Mpropose, Mwrite, rounds)
+    customWeightLatencyAfter = predictLatency(n, f, delta, custom_weights, leaderId, Mpropose, Mwrite, rounds)
+
+    if awareWeightLatencyAfter - awareWeightLatencyBefore > customWeightLatencyAfter - customWeightLatencyBefore:
+        betterRecoveryPerformance += 1
+    else:
+        sameRecoveryPerformance += 1
+
+# Plot pie chart
+labels = ['Better', 'Same']
+sizes = [betterRecoveryPerformance, sameRecoveryPerformance]
+colors = ['lightblue', 'orange']
+explode = (0.1, 0)  # explode the first slice (better recovery performance)
+
+plt.figure(figsize=(8, 6))
+plt.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
+plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+plt.title('Custom vs Binary weights AWARE Recovery Performance')
+plt.show()
+
+
+
