@@ -141,7 +141,7 @@ n = 3 * f + 1 + delta  # total num of replicas
 vmax = 1 + delta / f  # 2f replicas
 vmin = 1  # n - 2f replicas
 
-numberOfViews = 6
+numberOfViews = 10
 
 ## EXPERIMENT
 simulations = 10000
