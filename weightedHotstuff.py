@@ -3,6 +3,7 @@ import heapq
 import time
 import math
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def formQuorumWeighted(LMessageReceived, weights, quorumWeight):
@@ -59,7 +60,7 @@ def formQuorumBasic(LMessageReceived, quorumWeight):
 
 
 def predictLatencyBasicHotstuff(n, f, Lnew_view, Lprepare, Lprecommit, Lcommit):
-    quorumWeight = n - f  # quorum formation condition
+    quorumWeight = np.ceil((n + f + 1) / 2)  # quorum formation condition -> majority for egalitarian quorum
 
     # PREPARE phase -> leader waits for quorum formation with (n - f) NEW-VIEW messages from replicas
     tPREPARE = formQuorumBasic(Lnew_view, quorumWeight)
@@ -355,13 +356,13 @@ for _ in range(simulations):
 
 averageBasicLatency /= simulations
 
-print(f"The avergae Basic Hotstuff Latency is {averageBasicLatency}.\n")
+print(f"The average Basic Hotstuff Latency is {averageBasicLatency}.\n")
 
 # Plot histogram
 plt.figure(figsize=(8, 6))
 plt.hist(basicLatencies, bins=50, color='skyblue', edgecolor='black')
 plt.axvline(x=averageBasicLatency, color='red', linestyle='--', label=f'Average Basic Hotstuff Latency: {averageBasicLatency:.2f}')
-plt.title('Latency of Hotstuff')
+plt.title('Latency of Basic Hotstuff')
 plt.xlabel('Latency')
 plt.ylabel('Number of Simulations')
 plt.legend()
@@ -370,7 +371,6 @@ plt.show()
 
 ### EXPERIMENT 6
 print("------------ EXPERIMENT 6 ------------")
-
 simulations = 10000
 averageWeightedLatency = 0
 weightedLatencies = []
@@ -386,7 +386,7 @@ for _ in range(simulations):
 
 averageWeightedLatency /= simulations
 
-print(f"The avergae Basic Hotstuff Latency is {averageWeightedLatency}.")
+print(f"The average Weighted Hotstuff Latency is {averageWeightedLatency}.")
 
 # Plot histogram
 plt.figure(figsize=(8, 6))

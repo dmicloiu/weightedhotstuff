@@ -421,7 +421,7 @@ explode = (0.1, 0)  # explode the first slice (better recovery performance)
 plt.figure(figsize=(8, 6))
 plt.pie(sizes, explode=explode, labels=labels, colors=colors, autopct='%1.1f%%', shadow=True, startangle=140)
 plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-plt.title('Custom vs Binary weights AWARE Recovery Performance')
+plt.title('Generalised vs Binary weighting in AWARE - Analysis on Recovery Performance')
 plt.show()
 
 
