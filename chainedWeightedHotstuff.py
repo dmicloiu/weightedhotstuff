@@ -1,6 +1,7 @@
 import random
 import heapq
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 # use the same function for Quorum Formation on both basic and weighted Chained Hotstuff
@@ -52,7 +53,10 @@ def runChainedHotstuffSimulation(n, numberOfViews, type="basic"):
 
 
 def processView(n, f, leaderID, currentProcessingCommands, type, replicaPerformance):
-    quorumWeight = 2 * f + 1  # quorum formation condition
+    quorumWeight = np.ceil((n + f + 1) / 2)  # quorum formation condition
+
+    if type != "basic":
+        quorumWeight = 2 * (f + delta) + 1
 
     # basic means normal Chained Hotstuff -> all weights are 1
     # random means weighted Chained Hotstuff with the weights assigned randomly
