@@ -3,13 +3,17 @@ import heapq
 import matplotlib.pyplot as plt
 import numpy as np
 import time, math
+import plotly.graph_objects as plotly
 
 
 # use the same function for Quorum Formation on both basic and weighted Chained Hotstuff
 # we are using weights equal to 1 for the normal version
-def formQuorumChained(LMessageReceived, weights, quorumWeight):
+def formQuorumChained(LMessageReceived, weights, quorumWeight, faulty_replicas={}):
     heap = []
     for replicaIdx in range(n):
+        # do not consider faulty replicas for consensus
+        if replicaIdx in faulty_replicas:
+            continue
         heapq.heappush(heap, (LMessageReceived[replicaIdx], weights[replicaIdx]))
 
     weight = 0
@@ -22,7 +26,7 @@ def formQuorumChained(LMessageReceived, weights, quorumWeight):
     return agreementTime
 
 
-def runChainedHotstuffSimulation(n, numberOfViews, type="basic"):
+def runChainedHotstuffSimulation(n, numberOfViews, type="basic", faulty=False):
     # randomly choose the leaders for each new view in the Chained-Hotstuff simulation
     leaderRotation = []
     for _ in range(numberOfViews):
@@ -47,13 +51,13 @@ def runChainedHotstuffSimulation(n, numberOfViews, type="basic"):
             currentProcessingCommands.pop()
 
         (latencyOfView, replicaPerformance) = processView(n, f, leaderRotation[viewNumber], currentProcessingCommands,
-                                                          type, replicaPerformance)
+                                                          type, replicaPerformance, faulty)
         latency += latencyOfView
 
     return latency
 
 
-def processView(n, f, leaderID, currentProcessingCommands, type, replicaPerformance):
+def processView(n, f, leaderID, currentProcessingCommands, type, replicaPerformance, faulty=False):
     quorumWeight = np.ceil((n + f + 1) / 2)  # quorum formation condition
 
     if type != "basic":
@@ -110,9 +114,17 @@ def processView(n, f, leaderID, currentProcessingCommands, type, replicaPerforma
 
         # the rest of the weights are already Vmin = 1
 
+
     # type best indicates that we use simulated annealing to get the best performance
     if type == "best":
         return processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, quorumWeight)
+
+    # consider the case we are making f replicas faulty
+    faulty_replicas = set()
+    if type != "basic" and faulty:
+        for replicaIdx in range(n):
+            if len(faulty_replicas) < f and weights[replicaIdx] == vmax and replicaIdx != leaderID:
+                faulty_replicas.add(replicaIdx)
 
     # the total time it takes for performing the current phase for each command in the current view
     totalTime = 0
@@ -124,7 +136,7 @@ def processView(n, f, leaderID, currentProcessingCommands, type, replicaPerforma
         avgLatency += Lphase
 
         # EXECUTE the current phase of the command -> leader waits for quorum formation with (n - f) messages from replicas
-        totalTime += formQuorumChained(Lphase, weights, quorumWeight)
+        totalTime += formQuorumChained(Lphase, weights, quorumWeight, faulty_replicas)
 
     numberOfProcessingCommands = len(currentProcessingCommands)
     for idx in range(n):
@@ -241,6 +253,7 @@ vmin = 1  # n - 2f replicas
 numberOfViews = 10
 
 ## EXPERIMENT 1
+print("------------ EXPERIMENT 1 ------------")
 simulations = 10000
 
 avgBasicLatency = 0
@@ -361,3 +374,58 @@ plt.legend(fontsize=12)
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.show()
 
+
+# EXPERIMENT 3 -> faulty nodes
+print("------------ EXPERIMENT 3 ------------")
+
+numberOfViews = 10
+basicLatency = runChainedHotstuffSimulation(n, numberOfViews, type='basic')
+randomLatency = runChainedHotstuffSimulation(n, numberOfViews, type='random', faulty=False)
+randomLatencyFaulty = runChainedHotstuffSimulation(n, numberOfViews, type='random', faulty=True)
+dynamicLatency = runChainedHotstuffSimulation(n, numberOfViews, type='dynamic', faulty=False)
+dynamicLatencyFaulty = runChainedHotstuffSimulation(n, numberOfViews, type='dynamic', faulty=True)
+bestLatency = runChainedHotstuffSimulation(n, numberOfViews, type='best')
+
+print(f"Simulation of Weighted Chained Hotstuff over {numberOfViews} views")
+print("---------------")
+print(f"Basic (Egalitarian) Weighting Scheme {basicLatency}")
+print("---------------")
+print(f"Random Weighting Scheme {randomLatency}")
+print(f"Random Weighting Scheme - FAULTY {randomLatencyFaulty}")
+print("---------------")
+print(f"Dynamic Weighting Scheme {dynamicLatency}")
+print(f"Dynamic Weighting Scheme - FAULTY {dynamicLatencyFaulty}")
+print("---------------")
+print(f"Simulated Annealing (Best) Weighting Scheme {bestLatency}")
+print("---------------")
+
+results = {
+    "Basic": basicLatency,
+    "Random (Non-faulty)": randomLatency,
+    "Random (Faulty)": randomLatencyFaulty,
+    "Dynamic (Non-faulty)": dynamicLatency,
+    "Dynamic (Faulty)": dynamicLatencyFaulty,
+    "Best": bestLatency
+}
+
+simulation_types = list(results.keys())
+simulation_results = list(results.values())
+
+plt.figure(figsize=(10, 8))
+bars = plt.barh(simulation_types, simulation_results, color=['skyblue', 'skyblue', 'red', 'skyblue', 'red', 'skyblue'])
+plt.xlabel('Latency [ms]', fontsize=14)
+plt.ylabel('Weighting Assignment', fontsize=14)
+plt.title(f'Weighted Chained Hotstuff performance over {numberOfViews} views', fontsize=16)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+
+# Adding values beside the bars
+for i, result in enumerate(simulation_results):
+    plt.text(result + 0.1, i, str(result), va='center', fontsize=10, style="oblique")
+
+plt.gca().invert_yaxis()  # Invert y-axis to display simulation types from top to bottom
+plt.grid(axis='x', linestyle='--', alpha=0.7)
+plt.gca().spines['top'].set_visible(False)
+plt.gca().spines['right'].set_visible(False)
+plt.tight_layout()
+plt.show()
