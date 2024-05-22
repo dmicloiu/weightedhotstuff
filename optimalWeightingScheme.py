@@ -66,14 +66,14 @@ def compute_quorum_weight(n, f, delta, weights):
     return quorum_weight
 
 
-def formQuorumWeighted(LMessageReceived, weights, quorumWeight, faulty=False):
+def formQuorumWeighted(LMessageReceived, weights, quorumWeight, f, faulty=False):
     heap = []
     for replicaIdx in range(n):
         heapq.heappush(heap, (LMessageReceived[replicaIdx], weights[replicaIdx]))
 
     weight = 0
     agreementTime = 0
-    removed = False
+    removed_replicas = 0
     while weight < quorumWeight:
         # special case since we work with double numbers
         if len(heap) == 0 and abs(quorumWeight - weight) <= 1e-6:
@@ -82,15 +82,15 @@ def formQuorumWeighted(LMessageReceived, weights, quorumWeight, faulty=False):
             # print(weight)
             break
 
-        # if the replica is faulty we treat worst case scenario the 2nd best performing one is failing (first best is leader)
-        if faulty and not removed:
+        # if the replica is faulty we treat worst case scenario the f best performing replicas are failing (excluding the leader)
+        if faulty and removed_replicas < f:
             (receivingTime, weightOfVote) = heapq.heappop(heap)
 
             # if leader -> not faulty
             if receivingTime != 0:
-                removed = True
+                removed_replicas += 1
             else:
-                weight += weightOfVote  ## in Basic Hotstuff all relicas have the same weight
+                weight += weightOfVote
                 agreementTime = receivingTime
             continue
 
@@ -111,20 +111,20 @@ def predictLatency(n, f, delta, weights, faulty=False):
 
     # predict latency for Hotstuff algorithm
     # PREPARE phase -> leader waits for quorum formation with (n - f) NEW-VIEW messages from replicas
-    tPREPARE = formQuorumWeighted(Lnew_view, weights, quorumWeight, faulty)
+    tPREPARE = formQuorumWeighted(Lnew_view, weights, quorumWeight, f, faulty)
 
     # after quorum formation -> leader sends PREPARE messages
 
     # PRE-COMMIT phase -> leader waits for quorum formation with (n - f) PREPARE messages from replicas
-    tPRECOMIT = formQuorumWeighted(Lprepare, weights, quorumWeight, faulty)
+    tPRECOMIT = formQuorumWeighted(Lprepare, weights, quorumWeight, f, faulty)
 
     # after quorum formation -> leader sends PRE-COMMIT messages
 
     # COMMIT phase -> leader waits for quorum formation with (n - f) PRE-COMMIT messages from replicas
-    tCOMMIT = formQuorumWeighted(Lprecommit, weights, quorumWeight, faulty)
+    tCOMMIT = formQuorumWeighted(Lprecommit, weights, quorumWeight, f, faulty)
 
     # DECIDE phase -> leader waits for quorum formation with (n - f) COMMIT messages from replicas
-    tDECIDE = formQuorumWeighted(Lcommit, weights, quorumWeight, faulty)
+    tDECIDE = formQuorumWeighted(Lcommit, weights, quorumWeight, f, faulty)
 
     print(quorumWeight)
     print(weights)
