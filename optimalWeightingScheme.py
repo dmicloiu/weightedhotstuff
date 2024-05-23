@@ -22,6 +22,7 @@ def all_subsets(index, n, current_subsets):
 def compute_quorum_weight(n, f, delta, weights):
     heap = []
     for replicaIdx in range(n):
+        # push -weight in heap to make it a MAX HEAP since we are interested in the replicas holding most of the power
         heapq.heappush(heap, (-weights[replicaIdx], replicaIdx))
 
     # get out the f maximum weights -> worst case scenario all most powerful replicas fail
@@ -35,7 +36,7 @@ def compute_quorum_weight(n, f, delta, weights):
         quorum_weight -= weight
 
     # get all possible subsets which gather votes such that quorum is formed
-    # check that they overlap by at least (f + 1) nodes
+    # check that they overlap by at least (f + 1) nodes -> CONSISTENCY
     possible_quorums = all_subsets(0, n, [])
 
     # out of the possible_quorums now select all quorums that have weight higher or equal than the quorum_weight
@@ -161,18 +162,15 @@ def simulated_annealing(n, f, delta):
     bestWeightingScheme = []
 
     while step < step_max and temp > t_min:
-        # # generate "neighbouring" state for the weighting scheme
-        # nextPerturbation = [random.uniform(currentWeightingScheme[idx] - 1, perturbation_step) for idx in range(n)]
-        #
-        # # update the weighting scheme
-        # nextWeightingScheme = [1 + nextPerturbation[i] for i in range(n)]
+        # generate "neighbouring" state for the weighting scheme
         nextWeightingScheme = []
         for i in range(n):
-            lowerBound = max(currentWeightingScheme[i] - 0.1, 0)
-            upperBound = min(currentWeightingScheme[i] + 0.1, 2)
+            lowerBound = max(currentWeightingScheme[i] - perturbation_step, 0)
+            upperBound = min(currentWeightingScheme[i] + perturbation_step, 2)
             nextWeightingScheme.append(random.uniform(lowerBound, upperBound))
 
         # compute the energy of the new state
+        # -> in this case the latency of Hotstuff given the new weighted distribution scheme
         newLatency = predictLatency(n, f, delta, nextWeightingScheme)
 
         # if it performs better
@@ -184,16 +182,17 @@ def simulated_annealing(n, f, delta):
                 jumps = jumps + 1
                 currentWeightingScheme = nextWeightingScheme
 
-        if newLatency < bestLatency:
-            bestLatency = newLatency
-            bestWeightingScheme = nextWeightingScheme
-
         if newLatency == bestLatency:
             newLatencyWhenFaulty = predictLatency(n, f, delta, nextWeightingScheme, True)
 
             if newLatencyWhenFaulty < bestLatencyWhenFaulty:
                 bestLatencyWhenFaulty = newLatencyWhenFaulty
                 bestWeightingScheme = nextWeightingScheme
+
+        if newLatency < bestLatency:
+            bestLatency = newLatency
+            bestWeightingScheme = nextWeightingScheme
+            bestLatencyWhenFaulty = predictLatency(n, f, delta, nextWeightingScheme, True)
 
         # update the tempertaure and step counter
         temp = temp * (1 - theta)
@@ -205,8 +204,7 @@ def simulated_annealing(n, f, delta):
     print('-------- Simulated annealing --------')
     print('--------------------------------')
     print('Configurations examined: {}    time needed:{}'.format(step, end - start))
-    print(
-        'Final solution latency: {} and latency under faulty conditions: {}'.format(bestLatency, bestLatencyWhenFaulty))
+    print('Final solution latency: {} and latency under faulty conditions: {}'.format(bestLatency, bestLatencyWhenFaulty))
     print('initTemp:{} finalTemp:{}'.format(init_temp, temp))
     print('coolingRate:{} threshold:{} jumps:{}'.format(theta, t_min, jumps))
 
@@ -220,7 +218,7 @@ def generateLatenciesToLeader(n, leaderID, low, high):
         if i != leaderID:
             L[i] = random.randint(low, high)
 
-    return sorted(L)
+    return L
 
 
 f = 1  # max num of faulty replicas
@@ -240,3 +238,8 @@ predictLatency(n, f, delta, [2, 2, 1, 1, 1], faulty=False)
 predictLatency(n, f, delta, [2, 2, 1, 1, 1], faulty=True)
 
 print(simulated_annealing(n, f, delta))
+
+print(Lnew_view)
+print(Lprepare)
+print(Lprecommit)
+print(Lcommit)
