@@ -2,20 +2,22 @@ import time, random, math
 import heapq
 
 
-def all_subsets(index, n, current_subsets):
-    if index == n:
-        return current_subsets
+def all_subsets(n):
+    current_subsets = []
 
-    if index == 0:
-        for i in range(n):
-            current_subsets.append([i])
-    else:
-        for subset in current_subsets:
-            last_added = subset[-1]
-            for i in range(last_added + 1, n):
-                current_subsets.append(subset + [i])
+    for i in range(n):
+        current_subsets.append([i])
 
-    return all_subsets(index + 1, n, current_subsets)
+    for subset in current_subsets:
+        last_added = subset[-1]
+        for i in range(last_added + 1, n):
+            current_subsets.append(subset + [i])
+
+    # DEBUG purposes
+    # print(current_subsets)
+    # print("--------------")
+
+    return current_subsets
 
 
 # function for computing the quorum weight such as the conditions for quorums are satisfied
@@ -37,7 +39,7 @@ def compute_quorum_weight(n, f, delta, weights):
 
     # get all possible subsets which gather votes such that quorum is formed
     # check that they overlap by at least (f + 1) nodes -> CONSISTENCY
-    possible_quorums = all_subsets(0, n, [])
+    possible_quorums = all_subsets(n)
 
     # out of the possible_quorums now select all quorums that have weight higher or equal than the quorum_weight
     valid_quorums = []
@@ -60,10 +62,10 @@ def compute_quorum_weight(n, f, delta, weights):
                 if element in quorum2:
                     overlap += 1
 
-        if overlap < f + 1:
-            # it means that the current weighting scheme is violating quorum system rules
-            return -1
-
+            if overlap < f + 1:
+                # it means that the current weighting scheme is violating quorum system rules
+                return -1
+    print(valid_quorums)
     return quorum_weight
 
 
@@ -127,9 +129,13 @@ def predictLatency(n, f, delta, weights, faulty=False):
     # DECIDE phase -> leader waits for quorum formation with (n - f) COMMIT messages from replicas
     tDECIDE = formQuorumWeighted(Lcommit, weights, quorumWeight, f, faulty)
 
-    print(quorumWeight)
-    print(weights)
-    print(faulty)
+    # print(quorumWeight)
+    # print(weights)
+    # print(faulty)
+    # print(tPREPARE)
+    # print(tPRECOMIT)
+    # print(tCOMMIT)
+    # print(tDECIDE)
     print((tPREPARE + tPRECOMIT + tCOMMIT + tDECIDE))
     print("----------------------")
 

@@ -26,16 +26,37 @@ def formQuorumChained(LMessageReceived, weights, quorumWeight, faulty_replicas={
     return agreementTime
 
 
-def runChainedHotstuffSimulation(n, numberOfViews, type="basic", faulty=False):
-    # randomly choose the leaders for each new view in the Chained-Hotstuff simulation
-    leaderRotation = []
-    for _ in range(numberOfViews):
-        leaderRotation.append(random.randint(0, n - 1))
+def setupChainedHotstuffSimulation(n, leaderRotation, type="basic", faulty=False):
+    # set up the weighting scheme
+    quorumWeight = np.ceil((n + f + 1) / 2)  # quorum formation condition
 
-    # in the beginning we have to information on the performance of replicas in the previous view
-    # -> all replicas perform as good as possible
-    replicaPerformance = [0] * n
+    if type != "basic":
+        quorumWeight = 2 * (f + delta) + 1
 
+    # basic means normal Chained Hotstuff -> all weights are 1
+    # weighted means weighted Chained Hotstuff with the Vmax/Vmin AWARE weighting scheme
+
+    # AWARE weighting scheme
+    weights = [1] * n
+    if type == "weighted":
+        for replicaIDx in range(2 * f):
+            weights[replicaIDx] = vmax
+
+        # the rest of the weights are already Vmin = 1
+
+    # consider the case we are making f replicas faulty
+    faulty_replicas = set()
+    if type != "basic" and faulty:
+        for replicaIdx in range(n):
+            if len(faulty_replicas) < f and weights[replicaIdx] == vmax:
+                faulty_replicas.add(replicaIdx)
+
+    if type == "best":
+        return runChainedHotstuffSimulatedAnnealing(n, quorumWeight, leaderRotation, faulty_replicas)
+
+    return runChainedHotstuffSimulation(n, weights, quorumWeight, leaderRotation, faulty_replicas)
+
+def runChainedHotstuffSimulation(n, weights, quorumWeight, leaderRotation, faulty_replicas={}):
     # keep track of the total latency prediction of the simulation
     latency = 0
 
@@ -50,108 +71,24 @@ def runChainedHotstuffSimulation(n, numberOfViews, type="basic", faulty=False):
         if len(currentProcessingCommands) == 5:
             currentProcessingCommands.pop()
 
-        (latencyOfView, replicaPerformance) = processView(n, f, leaderRotation[viewNumber], currentProcessingCommands,
-                                                          type, replicaPerformance, faulty)
-        latency += latencyOfView
+        latency += processView(n, leaderRotation[viewNumber], currentProcessingCommands,
+                               weights, quorumWeight, faulty_replicas)
 
     return latency
 
-
-def processView(n, f, leaderID, currentProcessingCommands, type, replicaPerformance, faulty=False):
-    quorumWeight = np.ceil((n + f + 1) / 2)  # quorum formation condition
-
-    if type != "basic":
-        quorumWeight = 2 * (f + delta) + 1
-
-    # basic means normal Chained Hotstuff -> all weights are 1
-    # random means weighted Chained Hotstuff with the weights assigned randomly
-    # dynamic means weighted Chained Hotstuff with weights assigned based on replica performance heuristic based on previous completed view
-
-    # basic weighting scheme
-    weights = [1] * n
-    if type == "random":
-        # the rest of the weights are already Vmin = 1
-        # leader should have Vmax weight
-        weights[leaderID] = vmax
-        replicaID = leaderID
-
-        # keep track how many replicas are assigned Vmax sice only 2f ones should be
-        numberOfVmaxReplicas = 1
-        while True:
-            while weights[replicaID] == vmax:
-                replicaID = random.randint(0, n - 1)
-
-            # assign the new randomly chosen replica Vmax weight
-            weights[replicaID] = vmax
-            numberOfVmaxReplicas += 1
-
-            # stop assigning Vmax replicas when we reach 2*f replicas
-            if (numberOfVmaxReplicas == 2 * f):
-                break
-
-    elif type == "dynamic":
-        # leader should have Vmax weight
-        weights[leaderID] = vmax
-
-        heap = []
-        for replicaIdx in range(n):
-            heapq.heappush(heap, (replicaPerformance[replicaIdx], replicaIdx))
-
-        # keep track how many replicas are assigned Vmax sice only 2f ones should be
-        numberOfVmaxReplicas = 1
-        while True:
-            (latency, replicaID) = heapq.heappop(heap)
-
-            if replicaID == leaderID:
-                continue
-
-            weights[replicaID] = vmax
-            numberOfVmaxReplicas += 1
-
-            # stop assigning Vmax replicas when we reach 2*f replicas
-            if (numberOfVmaxReplicas == 2 * f):
-                break
-
-        # the rest of the weights are already Vmin = 1
-
-
-    # type best indicates that we use simulated annealing to get the best performance
-    if type == "best":
-        return processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, quorumWeight)
-
-    # consider the case we are making f replicas faulty
-    faulty_replicas = set()
-    if type != "basic" and faulty:
-        for replicaIdx in range(n):
-            if len(faulty_replicas) < f and weights[replicaIdx] == vmax and replicaIdx != leaderID:
-                faulty_replicas.add(replicaIdx)
-
+def processView(n, leaderID, currentProcessingCommands, weights, quorumWeight, faulty_replicas):
     # the total time it takes for performing the current phase for each command in the current view
     totalTime = 0
-    avgLatency = [0] * n
     for _ in currentProcessingCommands:
         # generate the latency vector of the leader -> latency of leader receiving the vote message from each replica
         Lphase = generateLatenciesToLeader(n, leaderID=leaderID, low=0, high=1000)
-
-        avgLatency += Lphase
 
         # EXECUTE the current phase of the command -> leader waits for quorum formation with (n - f) messages from replicas
         totalTime += formQuorumChained(Lphase, weights, quorumWeight, faulty_replicas)
 
-    numberOfProcessingCommands = len(currentProcessingCommands)
-    for idx in range(n):
-        avgLatency[idx] /= numberOfProcessingCommands
+    return totalTime
 
-    return (totalTime, avgLatency)
-
-def processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, quorumWeight):
-    Lphases = []
-
-    for _ in currentProcessingCommands:
-        # generate the latency vector of the leader -> latency of leader receiving the vote message from each replica
-        Lphase = generateLatenciesToLeader(n, leaderID=leaderID, low=0, high=1000)
-        Lphases.append(Lphase)
-
+def runChainedHotstuffSimulatedAnnealing(n, quorumWeight, leaderRotation, faulty_replicas={}):
     # for assessing the simulated annealing process
     start = time.time()
 
@@ -171,9 +108,9 @@ def processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, q
         currentWeights[i] = vmax
 
     # get a baseline
-    (currentLatency, avgLatency) = predictLatencySimulatedAnnealing(n, currentWeights, Lphases, quorumWeight)
+    currentLatency = runChainedHotstuffSimulation(n, currentWeights, quorumWeight, leaderRotation, faulty_replicas)
+
     bestLatency = currentLatency
-    bestAvgLatency = avgLatency
     bestWeights = []
 
     # for monitoring purposes of the simulating annealing
@@ -182,7 +119,7 @@ def processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, q
     while step < step_max and temp > t_min:
         while True:
             replicaFrom = random.randint(0, n - 1)
-            if currentWeights[replicaFrom] == vmax and replicaFrom != leaderID:
+            if currentWeights[replicaFrom] == vmax:
                 break
 
         while True:
@@ -194,7 +131,7 @@ def processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, q
         newWeights[replicaTo] = currentWeights[replicaFrom]
         newWeights[replicaFrom] = currentWeights[replicaTo]
 
-        (newLatency, newAvgLatency) = predictLatencySimulatedAnnealing(n, currentWeights, Lphases, quorumWeight)
+        newLatency = runChainedHotstuffSimulation(n, currentWeights, quorumWeight, leaderRotation, faulty_replicas)
 
         if newLatency < currentLatency:
             currentWeights = newWeights
@@ -206,7 +143,6 @@ def processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, q
 
         if newLatency < bestLatency:
             bestLatency = newLatency
-            bestAvgLatency = newAvgLatency
             bestWeights = newWeights
 
         temp = temp * (1 - theta)
@@ -214,24 +150,7 @@ def processView_Simulated_Annealing(n, f, leaderID, currentProcessingCommands, q
 
     # DEBUG purposes
     # print(bestWeights)
-    return (bestLatency, bestAvgLatency)
-
-def predictLatencySimulatedAnnealing(n, currentWeights, Lphases, quorumWeight):
-    # the total time it takes for performing the current phase for each command in the current view
-    totalTime = 0
-    avgLatency = [0] * n
-
-    for Lphase in Lphases:
-        avgLatency += Lphase
-
-        # EXECUTE the current phase of the command -> leader waits for quorum formation with (n - f) messages from replicas
-        totalTime += formQuorumChained(Lphase, currentWeights, quorumWeight)
-
-    numberOfProcessingCommands = len(Lphase)
-    for idx in range(n):
-        avgLatency[idx] /= numberOfProcessingCommands
-
-    return (totalTime, avgLatency)
+    return bestLatency
 
 def generateLatenciesToLeader(n, leaderID, low, high):
     L = [0] * n
@@ -241,6 +160,87 @@ def generateLatenciesToLeader(n, leaderID, low, high):
             L[i] = random.randint(low, high)
 
     return L
+
+def getLeaderRotation(n, numberOfViews, type="round robin", currentLeaderRotation=None):
+    fullRotation = [0] * n
+
+    # "round robin" style
+    for i in range(n):
+        fullRotation[i] = i
+
+    if type == "random":
+       random.shuffle(fullRotation)
+
+    elif type == "neighbouring" and currentLeaderRotation is not None:
+        swapping = random.choice(fullRotation, 2)
+
+        # swap the following indices
+        idx1 = swapping[0]
+        idx2 = swapping[1]
+
+        # actually swap them
+        temp = currentLeaderRotation[idx1]
+        currentLeaderRotation[idx1] = currentLeaderRotation[idx2]
+        currentLeaderRotation[idx2] = temp
+
+    leaderRotation = []
+
+    for i in range(numberOfViews):
+        leaderRotation.append(fullRotation[i % n])
+
+    return leaderRotation
+
+def chainedHotstuffOptimalLeader(n, numberOfViews, type='basic', faulty=False):
+    # for assessing the simulated annealing process
+    start = time.time()
+
+    # declare a seed for this process
+    random.seed(300)
+
+    step = 0
+    step_max = 1000000
+    temp = 120
+    init_temp = temp
+    theta = 0.0055
+    t_min = 0.2
+
+    # starting leader rotation -> basic "round robin"
+    currentLeaderRotation = getLeaderRotation(n, numberOfViews)
+
+    # get a baseline
+    currentLatency = setupChainedHotstuffSimulation(n, currentLeaderRotation, type, faulty)
+
+    bestLatency = currentLatency
+    bestLeaderRotation = currentLeaderRotation
+
+    # for monitoring purposes of the simulating annealing
+    jumps = 0
+
+    while step < step_max and temp > t_min:
+        # generate "neighbouring" state for the leader rotation scheme
+        # swap two leaders
+        nextLeaderRotation = getLeaderRotation(n, numberOfViews, type="neighbouring")
+
+        newLatency = setupChainedHotstuffSimulation(n, currentLeaderRotation, type, faulty)
+
+        if newLatency < currentLatency:
+            currentLeaderRotation = nextLeaderRotation
+        else:
+            rand = random.uniform(0, 1)
+            if rand < math.exp(-(newLatency - currentLatency) / temp):
+                jumps = jumps + 1
+                currentLeaderRotation = nextLeaderRotation
+
+        if newLatency < bestLatency:
+            bestLatency = newLatency
+            bestLeaderRotation = nextLeaderRotation
+
+        temp = temp * (1 - theta)
+        step += 1
+
+    # DEBUG purposes
+    # print(bestWeights)
+    return bestLatency
 
 
 f = 1  # max num of faulty replicas
@@ -257,37 +257,31 @@ print("------------ EXPERIMENT 1 ------------")
 simulations = 10000
 
 avgBasicLatency = 0
-avgRandomLatency = 0
-avgDynamicLatency = 0
+avgWeightedLatency = 0
 
 basicLatency = []
-randomLatency = []
-dynamicLatency = []
+weightedLatency = []
 
 for _ in range(simulations):
+    leaderRotation = getLeaderRotation(n, numberOfViews)
+
     # run in BASIC MODE
-    latency = runChainedHotstuffSimulation(n, numberOfViews)
+    latency = setupChainedHotstuffSimulation(n, leaderRotation)
     basicLatency.append(latency)
     avgBasicLatency += (latency / simulations)
 
-    # run in RANDOM MODE
-    latency = runChainedHotstuffSimulation(n, numberOfViews, type="random")
-    randomLatency.append(latency)
-    avgRandomLatency += (latency / simulations)
-
-    # run in DYNAMIC MODE
-    latency = runChainedHotstuffSimulation(n, numberOfViews, type="dynamic")
-    dynamicLatency.append(latency)
-    avgDynamicLatency += (latency / simulations)
+    # run in WEIGHTED MODE
+    latency = setupChainedHotstuffSimulation(n, leaderRotation, type="weighted")
+    weightedLatency.append(latency)
+    avgWeightedLatency += (latency / simulations)
 
 
 print(f"We perform Chained Hotstuff using {simulations} simulations of the protocol, using {numberOfViews} views.")
 print(f"Average latency of Basic Chained Hotstuff: {avgBasicLatency}")
-print(f"Average latency of Weighted Chained Hotstuff - randomly assigned weights: {avgRandomLatency}")
-print(f"Average latency of Weighted Chained Hotstuff - dynamically assigned weights: {avgDynamicLatency}")
+print(f"Average latency of Weighted Chained Hotstuff: {avgWeightedLatency}")
 
-xlim_left = min(min(randomLatency), min(min(basicLatency), min(dynamicLatency)))
-xlim_right = max(max(randomLatency), max(max(basicLatency), max(dynamicLatency)))
+xlim_left = min(min(basicLatency), min(weightedLatency))
+xlim_right = max(max(basicLatency), max(weightedLatency))
 
 # DEBUG purposes
 # print(xlim_left, xlim_right)
@@ -305,24 +299,11 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
-# Graphical representation for RANDOM MODE
+# Graphical representation for WEIGHTED MODE
 plt.figure(figsize=(8, 6))
-plt.hist(randomLatency, bins=50, color='skyblue', edgecolor='black')
-plt.axvline(x=avgRandomLatency, color='red', linestyle='--', label=f'Average Random Latency: {avgRandomLatency:.2f}')
-plt.title('Latency of Weighted Chained Hotstuff with randomly assigned weights')
-plt.xlabel('Latency [ms]')
-plt.ylabel('Number of Simulations')
-plt.xlim([xlim_left, xlim_right])
-plt.ylim([0, 700])
-plt.legend()
-plt.grid(True)
-plt.show()
-
-# Graphical representation for DYNAMIC MODE
-plt.figure(figsize=(8, 6))
-plt.hist(dynamicLatency, bins=50, color='skyblue', edgecolor='black')
-plt.axvline(x=avgDynamicLatency, color='red', linestyle='--', label=f'Average Dynamic Latency: {avgDynamicLatency:.2f}')
-plt.title('Latency of Weighted Chained Hotstuff with dynamically assigned weights')
+plt.hist(weightedLatency, bins=50, color='skyblue', edgecolor='black')
+plt.axvline(x=avgWeightedLatency, color='red', linestyle='--', label=f'Average Weighted Latency: {avgWeightedLatency:.2f}')
+plt.title('Latency of Weighted Chained Hotstuff')
 plt.xlabel('Latency [ms]')
 plt.ylabel('Number of Simulations')
 plt.xlim([xlim_left, xlim_right])
@@ -334,8 +315,7 @@ plt.show()
 
 ## EXPERIMENT 2 -> one simulation over multiple view numbers to see potential trends
 basicLatency = []
-randomLatency = []
-dynamicLatency = []
+weightedLatency = []
 bestLatency = []
 
 viewNumbers = []
@@ -344,28 +324,25 @@ for i in range(1, 40):
 
 
 for numberOfViews in viewNumbers:
+    leaderRotation = getLeaderRotation(n, numberOfViews)
+
     # run in BASIC MODE
-    latency = runChainedHotstuffSimulation(n, numberOfViews) / numberOfViews
+    latency = setupChainedHotstuffSimulation(n, leaderRotation) / numberOfViews
     basicLatency.append(latency)
 
-    # run in RANDOM MODE
-    latency = runChainedHotstuffSimulation(n, numberOfViews, type="random") / numberOfViews
-    randomLatency.append(latency)
-
-    # run in DYNAMIC MODE
-    latency = runChainedHotstuffSimulation(n, numberOfViews, type="dynamic") / numberOfViews
-    dynamicLatency.append(latency)
+    # run in WEIGHTED MODE
+    latency = setupChainedHotstuffSimulation(n, leaderRotation, type="random") / numberOfViews
+    weightedLatency.append(latency)
 
     # run in BEST mode
-    latency = runChainedHotstuffSimulation(n, numberOfViews, type="best") / numberOfViews
+    latency = setupChainedHotstuffSimulation(n, leaderRotation, type="best") / numberOfViews
     bestLatency.append(latency)
 
 # Plot the Analysis
 plt.figure(figsize=(10, 8))
-plt.plot(viewNumbers, basicLatency, color='skyblue', marker='o', linestyle='-', linewidth=2, markersize=6, label='Egalitarian Weights')
-plt.plot(viewNumbers, randomLatency, color='red', marker='s', linestyle='--', linewidth=2, markersize=6, label='Randomly Assigned Binary Weights')
-plt.plot(viewNumbers, dynamicLatency, color='orange', marker='^', linestyle='-.', linewidth=2, markersize=6, label='Dynamically Assigned Binary Weights')
-plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=2, markersize=6, label='Best Assigned Binary Weights')
+plt.plot(viewNumbers, basicLatency, color='skyblue', marker='o', linestyle='-', linewidth=2, markersize=6, label='No Weights')
+plt.plot(viewNumbers, weightedLatency, color='red', marker='s', linestyle='--', linewidth=2, markersize=6, label='Randomly assigned AWARE Weights')
+plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=2, markersize=6, label='Best assigned AWARE Weights')
 
 plt.title('Analysis of Average Latency per View in Chained Hotstuff', fontsize=16)
 plt.xlabel('Number of views', fontsize=14)
@@ -379,32 +356,33 @@ plt.show()
 print("------------ EXPERIMENT 3 ------------")
 
 numberOfViews = 10
-basicLatency = runChainedHotstuffSimulation(n, numberOfViews, type='basic')
-randomLatency = runChainedHotstuffSimulation(n, numberOfViews, type='random', faulty=False)
-randomLatencyFaulty = runChainedHotstuffSimulation(n, numberOfViews, type='random', faulty=True)
-dynamicLatency = runChainedHotstuffSimulation(n, numberOfViews, type='dynamic', faulty=False)
-dynamicLatencyFaulty = runChainedHotstuffSimulation(n, numberOfViews, type='dynamic', faulty=True)
-bestLatency = runChainedHotstuffSimulation(n, numberOfViews, type='best')
+leaderRotation = getLeaderRotation(n, numberOfViews)
 
-print(f"Simulation of Weighted Chained Hotstuff over {numberOfViews} views")
+basicLatency = setupChainedHotstuffSimulation(n, leaderRotation, type='basic')
+weightedLatency = setupChainedHotstuffSimulation(n, leaderRotation, type='weighted', faulty=False)
+weightedLatencyFaulty = setupChainedHotstuffSimulation(n, leaderRotation, type='weighted', faulty=True)
+bestLatency = setupChainedHotstuffSimulation(n, leaderRotation, type='best')
+bestLatencyFaulty = setupChainedHotstuffSimulation(n, leaderRotation, type='best', faulty = True)
+weightedLatencyBestLeader = chainedHotstuffOptimalLeader(n, numberOfViews, type='weighted')
+
+print(f"Simulation of Chained Hotstuff over {numberOfViews} views")
 print("---------------")
-print(f"Basic (Egalitarian) Weighting Scheme {basicLatency}")
+print(f"No weights {basicLatency}")
 print("---------------")
-print(f"Random Weighting Scheme {randomLatency}")
-print(f"Random Weighting Scheme - FAULTY {randomLatencyFaulty}")
-print("---------------")
-print(f"Dynamic Weighting Scheme {dynamicLatency}")
-print(f"Dynamic Weighting Scheme - FAULTY {dynamicLatencyFaulty}")
+print(f"AWARE Weighted Scheme {weightedLatency}")
+print(f"AWARE Weighted Scheme FAULTY {weightedLatencyFaulty}")
 print("---------------")
 print(f"Simulated Annealing (Best) Weighting Scheme {bestLatency}")
+print(f"Simulated Annealing (Best) Weighting Scheme FAULTY {bestLatencyFaulty}")
+print("---------------")
+print(f"AWARE Weighted Scheme - BEST leader rotation {weightedLatencyBestLeader}")
+print(f"Simulated Annealing (Best) Weighting Scheme - BEST leader rotation {weightedLatencyBestLeader}")
 print("---------------")
 
 results = {
     "Basic": basicLatency,
-    "Random (Non-faulty)": randomLatency,
-    "Random (Faulty)": randomLatencyFaulty,
-    "Dynamic (Non-faulty)": dynamicLatency,
-    "Dynamic (Faulty)": dynamicLatencyFaulty,
+    "Weighted (Non-faulty)": weightedLatency,
+    "Weighted (Faulty)": weightedLatencyFaulty,
     "Best": bestLatency
 }
 
@@ -412,7 +390,7 @@ simulation_types = list(results.keys())
 simulation_results = list(results.values())
 
 plt.figure(figsize=(10, 8))
-bars = plt.barh(simulation_types, simulation_results, color=['skyblue', 'skyblue', 'red', 'skyblue', 'red', 'skyblue'])
+bars = plt.barh(simulation_types, simulation_results, color=['skyblue', 'skyblue', 'red', 'skyblue'])
 plt.xlabel('Latency [ms]', fontsize=14)
 plt.ylabel('Weighting Assignment', fontsize=14)
 plt.title(f'Weighted Chained Hotstuff performance over {numberOfViews} views', fontsize=16)
