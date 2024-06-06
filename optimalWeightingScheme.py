@@ -2,7 +2,8 @@ import time, random, math
 import numpy as np
 import heapq
 import matplotlib.pyplot as plt
-
+import experimental_utils
+import pandas as pd
 
 def all_subsets(n):
     current_subsets = []
@@ -68,7 +69,6 @@ def compute_quorum_weight(n, f, delta, weights):
                 # it means that the current weighting scheme is violating quorum system rules
                 return -1
 
-    # print(valid_quorums)
     return quorum_weight
 
 
@@ -80,16 +80,15 @@ def formQuorumWeighted(LMessageReceived, weights, quorumWeight, faulty_replicas=
 
     weight = 0
     agreementTime = 0
+    replicasUsed = 0
     while weight < quorumWeight:
         # special case since we work with double numbers
         if len(heap) == 0 and abs(quorumWeight - weight) <= 1e-6:
-            # prints for DEBUG purposes
-            # print(quorumWeight)
-            # print(weight)
             break
 
         (receivingTime, weightOfVote) = heapq.heappop(heap)
         weight += weightOfVote  ## in Basic Hotstuff all relicas have the same weight
+        replicasUsed += 1
         agreementTime = receivingTime
 
     return agreementTime
@@ -121,16 +120,6 @@ def predictLatency(weights, quorumWeight, type="basic", leaderRotation=[], fault
         tDECIDE = formQuorumWeighted(Lcommit, weights, quorumWeight, faulty_replicas)
 
         latency += (tPREPARE + tPRECOMIT + tCOMMIT + tDECIDE)
-
-    # print(quorumWeight)
-    # print(weights)
-    # print(tPREPARE)
-    # print(tPRECOMIT)
-    # print(tCOMMIT)
-    # print(tDECIDE)
-    # print(faulty_replicas)
-    # print((tPREPARE + tPRECOMIT + tCOMMIT + tDECIDE))
-    # print("----------------------")
 
     ## total time of a Hotstuff run with numberOfViews rounds
     return latency
@@ -283,35 +272,31 @@ def weightedHotstuff(n, f, delta, leaderRotation=[], numberOfViews=1):
     jumps = 0
 
     while step < step_max and temp > t_min:
-        newLeader = currentLeader
+        vmin_replicas = []
+        vmax_replicas = []
 
-        while True:
-            replicaFrom = random.randint(0, n - 1)
-            if currentWeights[replicaFrom] == 1 + delta / f:
-                break
-        while True:
-            replicaTo = random.randint(0, n - 1)
-            if replicaTo != replicaFrom:
-                break
+        for replicaID, weight in enumerate(currentWeights):
+            if weight == 1 + delta / f:
+                vmax_replicas.append(replicaID)
+            else:
+                vmin_replicas.append(replicaID)
 
-        if replicaFrom == currentLeader:
-            newLeader = replicaTo
+        maxReplica = np.random.choice(vmax_replicas)
+        minReplica = np.random.choice(vmin_replicas)
 
         newWeights = currentWeights.copy()
-        newWeights[replicaTo] = currentWeights[replicaFrom]
-        newWeights[replicaFrom] = currentWeights[replicaTo]
+        newWeights[maxReplica] = currentWeights[minReplica]
+        newWeights[minReplica] = currentWeights[maxReplica]
 
         newLatency = runWeightedHotstuff(n, f, delta, newWeights, leaderRotation, type="best",
                                          numberOfViews=numberOfViews)
 
         if newLatency < currentLatency:
-            currentLeader = newLeader
             currentWeights = newWeights
         else:
             rand = random.uniform(0, 1)
             if rand < math.exp(-(newLatency - currentLatency) / temp):
                 jumps = jumps + 1
-                currentLeader = newLeader
                 currentWeights = newWeights
 
         if newLatency == bestLatency:
@@ -340,7 +325,6 @@ def weightedHotstuff(n, f, delta, leaderRotation=[], numberOfViews=1):
     # print('Final solution latency: {}'.format(bestLatency))
     # print('initTemp:{} finalTemp:{}'.format(init_temp, temp))
     # print('coolingRate:{} threshold:{} jumps:{}'.format(theta, t_min, jumps))
-    # print(bestWeights)
 
     return (bestLatency, bestLatencyWhenFaulty)
 
@@ -497,35 +481,6 @@ def weightedBestHotstuffOptimalLeader(n, numberOfViews, faulty=False):
     return bestLatency
 
 
-def generateNetworkTopology(n, low, high):
-    network = []
-
-    for i in range(n):
-        distanceReplicaI = []
-        for j in range(n):
-            if i == j:
-                distanceReplicaI.append(0)
-            elif i < j:
-                distanceReplicaI.append(random.randint(low, high))
-            else:
-                distanceReplicaI.append(network[j][i])
-
-        network.append(distanceReplicaI)
-        # print(distanceReplicaI)
-
-    return network
-
-def tweakNetworkTopology(n, networkTopology):
-    for i in range(n):
-        offset = random.uniform(0, 20)
-        for j in range(n):
-            if i < j:
-                networkTopology[i][j] = networkTopology[i][j] + random.uniform(-10, 10)
-            else:
-                networkTopology[i][j] = networkTopology[j][i]
-
-    return networkTopology
-
 
 def generateLatenciesToLeader(n, leaderID):
     # latency induced by the distances between the leaderID replica and rest of replicas
@@ -605,6 +560,7 @@ leaderID = 0
 
 # EXPERIMENT 1 -> one simulation over multiple view numbers to see potential trends
 basicLatency = []
+basicLatencyFaulty = []
 
 weightedLatency = []
 weightedFallback = []
@@ -616,11 +572,14 @@ continuousLatency = []
 continuousFallback = []
 
 bestLeaderLatency = []
+bestLeaderLatencyFaulty = []
+
 bestWeightsAndLeaderLatency = []
+bestWeightsAndLeaderLatencyFaulty = []
 
 viewNumbers = []
-for i in range(1, 20):
-    viewNumbers.append(i * 5 + 3)
+for i in range(5, 21):
+    viewNumbers.append(i)
 
 networkTopology = [[9.74, 290.12, 222.89, 149.97, 284.75],
                    [286.24, 2.21, 202.91, 210.16, 156.58],
@@ -628,7 +587,7 @@ networkTopology = [[9.74, 290.12, 222.89, 149.97, 284.75],
                    [153.52, 210.18, 79.96, 5.1, 148.79],
                    [288.76, 155.68, 79.87, 148.54, 3.97]]
 
-awareWeights = [2, 1, 1, 2, 1]
+awareWeights = [2, 1, 2, 1, 1]
 
 for numberOfViews in viewNumbers:
     leaderRotation = getLeaderRotation(n, numberOfViews)
@@ -636,27 +595,37 @@ for numberOfViews in viewNumbers:
 
     # run in BASIC MODE
     latency = runWeightedHotstuff(n, f, delta, [1] * n, leaderRotation, type="basic",
-                                  numberOfViews=numberOfViews) / numberOfViews
+                                  numberOfViews=numberOfViews)
+    latency /= numberOfViews
     print("basic: {}".format(latency))
     basicLatency.append(latency)
 
+    latency = runWeightedHotstuff(n, f, delta, [1] * n, leaderRotation, type="basic", faulty=True,
+                                  numberOfViews=numberOfViews)
+    latency /= numberOfViews
+    print("basic fallback: {}".format(latency))
+    basicLatencyFaulty.append(latency)
+
     # run in WEIGHTED MODE
     latency = runWeightedHotstuff(n, f, delta, awareWeights, leaderRotation, type="weighted",
-                                  numberOfViews=numberOfViews) / numberOfViews
+                                  numberOfViews=numberOfViews)
+    latency /= numberOfViews
     latencyFaulty = runWeightedHotstuff(n, f, delta, awareWeights, leaderRotation, type="weighted", faulty=True,
-                                        numberOfViews=numberOfViews) / numberOfViews
+                                        numberOfViews=numberOfViews)
+    latencyFaulty /= numberOfViews
     weightedLatency.append(latency)
     print("weighted: {}".format(latency))
     print("weighted fallback: {}".format(latencyFaulty))
-    weightedFallback.append(latencyFaulty - latency)
+    weightedFallback.append(latencyFaulty)
 
     # run in BEST MODE
     (latency, latencyFaulty) = weightedHotstuff(n, f, delta, leaderRotation, numberOfViews)
     latency /= numberOfViews
     print("best: {}".format(latency))
     latencyFaulty /= numberOfViews
+    print("best fallback: {}".format(latencyFaulty))
     bestLatency.append(latency)
-    bestFallback.append(latencyFaulty - latency)
+    bestFallback.append(latencyFaulty)
 
     # run in CONTINUOUS MODE
     (latency, latencyFaulty) = continuousWeightedHotstuff(n, f, delta, leaderRotation, numberOfViews)
@@ -664,58 +633,135 @@ for numberOfViews in viewNumbers:
     latencyFaulty /= numberOfViews
     continuousLatency.append(latency)
     print("continuous: {}".format(latency))
-    continuousFallback.append(latencyFaulty - latency)
+    continuousFallback.append(latencyFaulty)
+    print("continuous fallback: {}".format(latencyFaulty))
 
     # run in WEIGHTED MODE with LEADER OPTIMALITY
-    latency = weightedHotstuffOptimalLeader(n, numberOfViews) / numberOfViews
+    latency = weightedHotstuffOptimalLeader(n, numberOfViews)
+    latency /= numberOfViews
     print("optimalLeader: {}".format(latency))
     bestLeaderLatency.append(latency)
 
+    latency = weightedHotstuffOptimalLeader(n, numberOfViews, faulty=True)
+    latency /= numberOfViews
+    print("optimalLeader fallback: {}".format(latency))
+    bestLeaderLatencyFaulty.append(latency)
+
     # run in BEST MODE with LEADER OPTIMALITY
-    latency = weightedBestHotstuffOptimalLeader(n, numberOfViews) / numberOfViews
+    latency = weightedBestHotstuffOptimalLeader(n, numberOfViews)
+    latency /= numberOfViews
     print("best optimalLeader: {}".format(latency))
     bestWeightsAndLeaderLatency.append(latency)
+
+    latency = weightedBestHotstuffOptimalLeader(n, numberOfViews, faulty=True)
+    latency /= numberOfViews
+    print("best optimalLeader fallback: {}".format(latency))
+    bestWeightsAndLeaderLatencyFaulty.append(latency)
 
 # Plot the analysis on different types of behaviours of Hotstuff
 plt.figure(figsize=(10, 8))
 plt.plot(viewNumbers, basicLatency, color='skyblue', marker='o', linestyle='-', linewidth=2, markersize=6,
-         label='No Weights')
+         label='Basic')
 plt.plot(viewNumbers, weightedLatency, color='orange', marker='s', linestyle='--', linewidth=2, markersize=6,
-         label='Randomly assigned AWARE Weights')
-
-plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=2, markersize=6,
-         label='Best assigned AWARE Weights')
-
-plt.plot(viewNumbers, continuousLatency, color='red', marker='*', linestyle='-.', linewidth=2, markersize=6,
-         label='Continuous Weights')
+         label='Weighted')
 
 plt.plot(viewNumbers, bestLeaderLatency, color='blue', marker='p', linestyle='--', linewidth=2, markersize=6,
-         label='Best leader rotation on Randomly assigned AWARE Weights')
+         label='Optimal Leader Weighted')
 
-plt.plot(viewNumbers, bestWeightsAndLeaderLatency, color='crimson', marker='o', linestyle='--', linewidth=2, markersize=6,
-         label='Best leader rotation on BEST assigned AWARE Weights')
+plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=2, markersize=6,
+         label='Best Weighted')
 
-plt.title('Analysis of Average Latency per View in Hotstuff', fontsize=16)
-plt.xlabel('Number of views', fontsize=14)
-plt.ylabel('Average Latency per View [ms]', fontsize=14)
-plt.legend(fontsize=12)
+plt.plot(viewNumbers, continuousLatency, color='red', marker='*', linestyle='-.', linewidth=2, markersize=6,
+         label='Continuous Weighted')
+
+plt.plot(viewNumbers, bestWeightsAndLeaderLatency, color='magenta', marker='o', linestyle='--', linewidth=2, markersize=6,
+         label='(Optimal Leader + Best) Weighted')
+
+# plt.title('Analysis of Average Latency per View in Hotstuff', fontsize=16)
+plt.xlabel('#views', fontsize=12)
+plt.ylabel('Average Latency per View [ms]', fontsize=12)
+plt.ylim(590, 900)
+plt.legend(fontsize=10)
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.show()
 
 # Plot the analysis on the fallback efficiency on different types of Hotstuff
 plt.figure(figsize=(10, 8))
-plt.plot(viewNumbers, weightedFallback, color='orange', marker='s', linestyle='--', linewidth=2, markersize=6,
-         label='Randomly assigned AWARE Weights')
+plt.plot(viewNumbers, basicLatencyFaulty, color='skyblue', marker='o', linestyle='-', linewidth=2, markersize=6,
+         label='Basic')
 
 plt.plot(viewNumbers, bestFallback, color='green', marker='d', linestyle=':', linewidth=2, markersize=6,
-         label='Best assigned AWARE Weights')
+         label='Best Weighted')
 
 plt.plot(viewNumbers, continuousFallback, color='red', marker='*', linestyle='-.', linewidth=2, markersize=6,
-         label='Continuous Weights')
+         label='Continuous Weighted')
 
-plt.title('Analysis of Fallback Latency Delay in Hotstuff', fontsize=16)
-plt.xlabel('Number of views', fontsize=14)
-plt.ylabel('Average Latency per View [ms]', fontsize=14)
-plt.legend(fontsize=12)
+plt.plot(viewNumbers, weightedFallback, color='orange', marker='s', linestyle='--', linewidth=2, markersize=6,
+         label='Weighted')
+
+plt.plot(viewNumbers, bestLeaderLatencyFaulty, color='blue', marker='p', linestyle='--', linewidth=2, markersize=6,
+         label='Optimal Leader Weighted')
+
+plt.plot(viewNumbers, bestWeightsAndLeaderLatencyFaulty, color='magenta', marker='o', linestyle='--', linewidth=2, markersize=6,
+         label='(Optimal Leader + Best) Weighted')
+
+# plt.title('Analysis of Fallback Latency Delay in Hotstuff', fontsize=16)
+plt.xlabel('#views', fontsize=12)
+plt.ylabel('Average Latency per View [ms]', fontsize=12)
+plt.legend(fontsize=10)
+plt.ylim(550)
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.show()
+
+numberOfSimulations = len(viewNumbers)
+
+# Calculate mean values
+mean_basicLatency = np.mean(basicLatency)
+mean_weightedLatency = np.mean(weightedLatency)
+mean_bestLeaderLatency = np.mean(bestLeaderLatency)
+mean_bestLatency = np.mean(bestLatency)
+mean_continuousLatency = np.mean(continuousLatency)
+mean_bestWeightsAndLeaderLatency = np.mean(bestWeightsAndLeaderLatency)
+
+# # Calculate percentage improvements
+# def calculate_improvement(basic, new):
+#     return ((new - basic) / basic) * 100
+
+# improvements = {
+#     'Weighted (Non-faulty)': calculate_improvement(mean_basicLatency, mean_weightedLatency),
+#     'Optimal Leader Weighted': calculate_improvement(mean_basicLatency, mean_bestLeaderLatency),
+#     'Best': calculate_improvement(mean_basicLatency, mean_bestLatency),
+#     'Continuous': calculate_improvement(mean_basicLatency, mean_continuousLatency),
+#     'Optimal Leader Best': calculate_improvement(mean_basicLatency, mean_bestWeightsAndLeaderLatency),
+# }
+#
+# # Generate LaTeX table code
+# latex_table = r"""
+# \begin{table}[h]
+#     \centering
+#     \caption{Percentage Improvement in Latency Compared to Basic Latency}
+#     \label{tab:latency_improvement}
+#     \begin{tabular}{|c|c|c|c|c|c|}
+#         \hline
+#         & \textbf{Weighted (Non-faulty)} & \textbf{Optimal Leader Weighted} & \textbf{Best} & \textbf{Continuous} & \textbf{Optimal Leader Best} \\
+#         \hline
+# """
+#
+# # Assuming each row corresponds to different figures like in your provided example
+# for i, (key, value) in enumerate(improvements.items(), start=1):
+#     latex_table += f"        \\textbf{{Fig. {i}}} & {value:.2f}\\% \\\\ \n"
+#     latex_table += "        \hline\n"
+#
+# latex_table += r"""
+#     \end{tabular}
+# \end{table}
+# """
+#
+# print(latex_table)
+
+print(np.mean(basicLatency))
+print(np.mean(weightedLatency))
+print(np.mean(bestLeaderLatency))
+print(np.mean(bestLatency))
+print(np.mean(continuousLatency))
+print(np.mean(bestWeightsAndLeaderLatency))
