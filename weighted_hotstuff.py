@@ -20,6 +20,41 @@ def all_subsets(n):
 
     return current_subsets
 
+def valid_quorum(subset_of_replicas, weights, quorumWeight):
+    sum = 0
+
+    for replicaID in subset_of_replicas:
+        sum += weights[replicaID]
+
+    return sum >= quorumWeight
+
+def construct_valid_quorums(n, weights, quorum_weight):
+    valid_quorums = []
+
+    subsets = []
+
+    for i in range(n):
+        subsets.append([i])
+
+    while True:
+        new_subsets = []
+        okay = False
+        for subset in subsets:
+            last_added = subset[-1]
+
+            for i in range(last_added + 1, n):
+                new_subset = subset + [i]
+                okay = True
+
+                if valid_quorum(new_subset, weights, quorum_weight):
+                    valid_quorums.append(new_subset)
+                else:
+                    new_subsets.append(new_subset)
+        if not okay:
+            break
+        subsets = new_subsets
+
+    return valid_quorums
 
 # function for computing the quorum weight such as the conditions for quorums are satisfied
 def compute_quorum_weight(n, f, delta, weights):
@@ -38,20 +73,10 @@ def compute_quorum_weight(n, f, delta, weights):
         (weight, replicaIdx) = heapq.heappop(heap)
         quorum_weight -= weight
 
+
     # get all possible subsets which gather votes such that quorum is formed
     # check that they overlap by at least (f + 1) nodes -> CONSISTENCY
-    possible_quorums = all_subsets(n)
-
-    # out of the possible_quorums now select all quorums that have weight higher or equal than the quorum_weight
-    valid_quorums = []
-    for subset in possible_quorums:
-        acquired_weight = 0
-
-        for replicaIdx in subset:
-            acquired_weight += weights[replicaIdx]
-
-        if acquired_weight >= quorum_weight:
-            valid_quorums.append(subset)
+    valid_quorums = construct_valid_quorums(n, weights, quorum_weight)
 
     for i in range(len(valid_quorums)):
         quorum1 = valid_quorums[i]
