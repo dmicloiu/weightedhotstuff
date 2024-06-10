@@ -13,9 +13,7 @@ networkTopology = [[6.46, 357.86, 222.56, 146.94, 285.3],
                    [228.36, 198.29, 3.94, 79.35, 80.43],
                    [152.98, 210.13, 78.42, 3.51, 147.77],
                    [290.1, 155.81, 79.21, 147.82, 4.17]]
-
-
-awareWeights = [2, 1, 2, 1, 1]
+weights = set_up_weighting_scheme(networkTopology, delta, f)
 
 basicLatency = []
 basicLatencyFaulty = []
@@ -27,6 +25,8 @@ bestLeaderLatency = []
 weightedLatencyBestLeader = []
 weightedLatencyBestLeaderFaulty = []
 bestLatencyBestLeader = []
+
+
 viewNumbers = []
 for i in range(5, 21):
     viewNumbers.append(i)
@@ -36,25 +36,24 @@ for numberOfViews in viewNumbers:
     leaderRotation = getLeaderRotation(n, numberOfViews)
     Lphases = generateExperimentLatencies(n, numberOfViews, networkTopology, leaderRotation)
 
-    basicLatency.append(setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation,
+    basicLatency.append(setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, weights, leaderRotation,
                                                        type='basic', numberOfViews=numberOfViews, faulty=False) / numberOfViews)
-    basicLatencyFaulty.append(setupChainedHotstuffSimulation(n, leaderRotation, type='basic', faulty=True) / numberOfViews)
 
-    weightedLatency.append(setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation,
+    weightedLatency.append(setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, weights, leaderRotation,
                                                        type='weighted', numberOfViews=numberOfViews, faulty=False) / numberOfViews)
     weightedLatencyFaulty.append(
-        setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation,
+        setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, weights, leaderRotation,
                                                        type='weighted', numberOfViews=numberOfViews, faulty=True) / numberOfViews)
 
-    bestLatency.append(setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation,
+    bestLatency.append(setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, weights, leaderRotation,
                                                        type='best', numberOfViews=numberOfViews, faulty=False) / numberOfViews)
     bestLatencyFaulty.append(
-        setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation,
+        setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, weights, leaderRotation,
                                                        type='best', numberOfViews=numberOfViews, faulty=True)/ numberOfViews)
 
-    weightedLatencyBestLeader.append(chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, type='weighted', faulty=False) / numberOfViews)
+    weightedLatencyBestLeader.append(chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, weights, numberOfViews, type='weighted', faulty=False) / numberOfViews)
     weightedLatencyBestLeaderFaulty.append(
-        chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, type='weighted', faulty=True) / numberOfViews)
+        chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, weights, numberOfViews, type='weighted', faulty=True) / numberOfViews)
 
     bestLatencyBestLeader.append(chainedHotstuffBestAndOptimalLeader(n, f, delta, networkTopology, Lphases, numberOfViews) / numberOfViews)
 

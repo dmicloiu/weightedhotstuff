@@ -48,6 +48,30 @@ def generateExperimentLatencies(n, numberOfViews, networkTopology, leaderRotatio
         Lphases.append(generateLatenciesToLeader(n, leaderRotation[viewNumber], networkTopology))
     return Lphases
 
+
+## UTILS FOR WEIGHTED MODE AWARE WEIGHTS ASSIGNMENT
+def set_up_weighting_scheme(networkTopology, delta, f):
+    overall_distance_from_replicas = np.sum(networkTopology, axis=0)
+    overall_distance_from_replicas = list(enumerate(overall_distance_from_replicas))
+
+    # print(overall_distance_from_replicas)
+
+    overall_distance_from_replicas = sorted(overall_distance_from_replicas, key=lambda x: x[1])
+
+    n = 3 * f + 1 + delta
+    weights = [1] * n
+    idx = 0
+    while idx < f:
+        indexOfBestReplica = overall_distance_from_replicas[idx][0]
+        weights[indexOfBestReplica] = 1 + delta / f
+
+        indexOfWorstReplica = overall_distance_from_replicas[n - idx - 1][0]
+        weights[indexOfWorstReplica] = 1 + delta / f
+
+        idx += 1
+
+    return weights
+
 ## UTILS FOR LEADER ROTATION
 def generateLatenciesToLeader(n, leaderID, networkTopology):
     # latency induced by the distances between the leaderID replica and rest of replicas

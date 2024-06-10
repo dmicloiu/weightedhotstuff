@@ -14,7 +14,8 @@ networkTopology = [[6.46, 357.86, 222.56, 146.94, 285.3],
                    [290.1, 155.81, 79.21, 147.82, 4.17]]
 
 
-awareWeights = [2, 1, 2, 1, 1]
+weights = set_up_weighting_scheme(networkTopology, delta, f)
+# print(awareWeights)
 
 basicLatency = []
 basicLatencyFaulty = []
@@ -56,10 +57,11 @@ for numberOfViews in viewNumbers:
     basicLatencyFaulty.append(latency)
 
     # run in WEIGHTED MODE
-    latency = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation, type="weighted",
+
+    latency = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weights, leaderRotation, type="weighted",
                                   numberOfViews=numberOfViews)
     latency /= numberOfViews
-    latencyFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, awareWeights, leaderRotation, type="weighted", faulty=True,
+    latencyFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weights, leaderRotation, type="weighted", faulty=True,
                                         numberOfViews=numberOfViews)
     latencyFaulty /= numberOfViews
     weightedLatency.append(latency)
@@ -86,23 +88,23 @@ for numberOfViews in viewNumbers:
     print("continuous faulty: {}".format(latencyFaulty))
 
     # run in WEIGHTED MODE with LEADER OPTIMALITY
-    latency = weightedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, faulty=False)
+    latency = weightedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, weights, numberOfViews, faulty=False)
     latency /= numberOfViews
     print("optimalLeader: {}".format(latency))
     bestLeaderLatency.append(latency)
 
-    latency = weightedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, faulty=True)
+    latency = weightedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, weights, numberOfViews, faulty=True)
     latency /= numberOfViews
     print("optimalLeader fallback: {}".format(latency))
     bestLeaderLatencyFaulty.append(latency)
 
     # run in BEST MODE with LEADER OPTIMALITY
-    latency = weightedBestHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, faulty=False)
+    latency = weightedBestHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, weights, numberOfViews, faulty=False)
     latency /= numberOfViews
     print("best optimalLeader: {}".format(latency))
     bestWeightsAndLeaderLatency.append(latency)
 
-    latency = weightedBestHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, faulty=True)
+    latency = weightedBestHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, weights, numberOfViews, faulty=True)
     latency /= numberOfViews
     print("best optimalLeader fallback: {}".format(latency))
     bestWeightsAndLeaderLatencyFaulty.append(latency)
