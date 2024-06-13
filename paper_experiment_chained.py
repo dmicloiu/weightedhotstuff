@@ -1,9 +1,9 @@
 from chained_weighted_hotstuff import *
 import matplotlib.pyplot as plt
-import os
+import os, csv
 
 
-def experiment(output_directory, timestamp):
+def experiment(figures_directory, data_directory, timestamp):
     f = 1  # max num of faulty replicas
     delta = 1  # additional replicas
     n = 3 * f + 1 + delta  # total num of replicas
@@ -16,12 +16,10 @@ def experiment(output_directory, timestamp):
     weights = set_up_weighting_scheme(networkTopology, delta, f)
 
     basicLatency = []
-    basicLatencyFaulty = []
     weightedLatency = []
     weightedLatencyFaulty = []
     bestLatency = []
     bestLatencyFaulty = []
-    bestLeaderLatency = []
     weightedLatencyBestLeader = []
     weightedLatencyBestLeaderFaulty = []
     bestLatencyBestLeader = []
@@ -89,7 +87,7 @@ def experiment(output_directory, timestamp):
     plt.yticks(fontsize=17)
     plt.legend(fontsize=18)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(output_directory, f"chained_{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"chained_{timestamp}.png"))
 
     plt.figure(figsize=(14, 10))
     plt.plot(viewNumbers, weightedLatencyFaulty, color='orange', marker='s', linestyle='--', linewidth=4, markersize=8,
@@ -109,52 +107,37 @@ def experiment(output_directory, timestamp):
     plt.xticks(fontsize=17)
     plt.yticks(fontsize=18)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(output_directory, f"chained_faulty_{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"chained_faulty_{timestamp}.png"))
 
-    #  Calculate mean values
+    #  calculate mean values
     mean_basicLatency = np.mean(basicLatency)
     mean_weightedLatency = np.mean(weightedLatency)
     mean_bestLeaderLatency = np.mean(weightedLatencyBestLeader)
     mean_bestLatency = np.mean(bestLatency)
     mean_bestWeightsAndLeaderLatency = np.mean(bestLatencyBestLeader)
 
-#     print(np.mean(basicLatency))
-#     print(np.mean(weightedLatency))
-#     print(np.mean(weightedLatencyBestLeader))
-#     print(np.mean(bestLatency))
-#     print(np.mean(bestLatencyBestLeader))
-#
-#     # Calculate percentage improvements
-#     def calculate_improvement(basic, new):
-#         return ((new - basic) / basic) * 100
-#
-#     improvements = {
-#         'Weighted (Non-faulty)': calculate_improvement(mean_basicLatency, mean_weightedLatency),
-#         'Optimal Leader Weighted': calculate_improvement(mean_basicLatency, mean_bestLeaderLatency),
-#         'Best': calculate_improvement(mean_basicLatency, mean_bestLatency),
-#         'Optimal Leader Best': calculate_improvement(mean_basicLatency, mean_bestWeightsAndLeaderLatency),
-#     }
-#
-#     # Generate LaTeX table code
-#     latex_table = r"""
-# \begin{table}[h]
-#     \centering
-#     \caption{Percentage Improvement in Latency Compared to Basic Latency}
-#     \label{tab:latency_improvement}
-#     \begin{tabular}{|c|c|c|c|c|c|}
-#         \hline
-#         & \textbf{Weighted (Non-faulty)} & \textbf{Optimal Leader Weighted} & \textbf{Best} & \textbf{Continuous} & \textbf{Optimal Leader Best} \\
-#         \hline
-# """
-#
-#     #  Assuming each row corresponds to different figures like in your provided example
-#     for i, (key, value) in enumerate(improvements.items(), start=1):
-#         latex_table += f"        \\textbf{{Fig. {i}}} & {value:.2f}\\% \\\\ \n"
-#         latex_table += "        \hline\n"
-#
-#     latex_table += r"""
-#     \end{tabular}
-# \end{table}
-# """
-#
-#     print(latex_table)
+    # calculate percentage improvements
+    improvements = {
+        'Weighted (Non-faulty)': calculate_improvement(mean_basicLatency, mean_weightedLatency),
+        'Optimal Leader Weighted': calculate_improvement(mean_basicLatency, mean_bestLeaderLatency),
+        'Best': calculate_improvement(mean_basicLatency, mean_bestLatency),
+        'Optimal Leader Best': calculate_improvement(mean_basicLatency, mean_bestWeightsAndLeaderLatency),
+    }
+
+    # create csv file with all data
+    csv_filename = os.path.join(data_directory, f'chained_{timestamp}.csv')
+    with open(csv_filename, 'w', newline='') as csvfile:
+        fieldnames = ['Protocol', 'Mean Latency (ms)', 'Improvement (%)']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        writer.writerow({'Protocol': 'Basic', 'Mean Latency (ms)': mean_basicLatency, 'Improvement (%)': 0})
+        writer.writerow({'Protocol': 'Weighted (Non-faulty)', 'Mean Latency (ms)': mean_weightedLatency,
+                         'Improvement (%)': improvements['Weighted (Non-faulty)']})
+        writer.writerow({'Protocol': 'Optimal Leader Weighted', 'Mean Latency (ms)': mean_bestLeaderLatency,
+                         'Improvement (%)': improvements['Optimal Leader Weighted']})
+        writer.writerow({'Protocol': 'Best', 'Mean Latency (ms)': mean_bestLatency, 'Improvement (%)': improvements['Best']})
+        writer.writerow({'Protocol': 'Optimal Leader Best', 'Mean Latency (ms)': mean_bestWeightsAndLeaderLatency,
+                         'Improvement (%)': improvements['Optimal Leader Best']})
+
+

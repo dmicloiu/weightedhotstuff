@@ -1,9 +1,9 @@
 from experimental_utils import *
 from weighted_hotstuff import *
 import matplotlib.pyplot as plt
-import os
+import os, csv
 
-def experiment(output_directory, timestamp):
+def experiment(figures_directory, data_directory, timestamp):
     f = 1 # max num of faulty replicas
     delta = 1  # additional replicas
     n = 3 * f + 1 + delta  # total num of replicas
@@ -138,7 +138,7 @@ def experiment(output_directory, timestamp):
     plt.yticks(fontsize=17)
     plt.legend(fontsize=18, loc='upper center', ncol=2)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(output_directory, f"{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"{timestamp}.png"))
 
     # # Plot the analysis on the fallback efficiency on different types of Hotstuff
     plt.figure(figsize=(14, 10))
@@ -165,9 +165,9 @@ def experiment(output_directory, timestamp):
     plt.legend(fontsize=18, loc='lower center', ncol=2)
     plt.ylim(520)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(output_directory, f"faulty_{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"faulty_{timestamp}.png"))
 
-    # Calculate mean values
+    # calculate mean values
     mean_basicLatency = np.mean(basicLatency)
     mean_weightedLatency = np.mean(weightedLatency)
     mean_bestLeaderLatency = np.mean(bestLeaderLatency)
@@ -175,10 +175,7 @@ def experiment(output_directory, timestamp):
     mean_continuousLatency = np.mean(continuousLatency)
     mean_bestWeightsAndLeaderLatency = np.mean(bestWeightsAndLeaderLatency)
 
-    # Calculate percentage improvements
-    def calculate_improvement(basic, new):
-        return ((new - basic) / basic) * 100
-
+    # calculate percentage improvements
     improvements = {
         'Weighted (Non-faulty)': calculate_improvement(mean_basicLatency, mean_weightedLatency),
         'Optimal Leader Weighted': calculate_improvement(mean_basicLatency, mean_bestLeaderLatency),
@@ -187,33 +184,19 @@ def experiment(output_directory, timestamp):
         'Optimal Leader Best': calculate_improvement(mean_basicLatency, mean_bestWeightsAndLeaderLatency),
     }
 
-    # Generate LaTeX table code
-    latex_table = r"""
-    \begin{table}[h]
-        \centering
-        \caption{Percentage Improvement in Latency Compared to Basic Latency}
-        \label{tab:latency_improvement}
-        \begin{tabular}{|c|c|c|c|c|c|}
-            \hline
-            & \textbf{Weighted (Non-faulty)} & \textbf{Optimal Leader Weighted} & \textbf{Best} & \textbf{Continuous} & \textbf{Optimal Leader Best} \\
-            \hline
-    """
+    # create csv file with all data
+    csv_filename = os.path.join(data_directory, f'{timestamp}.csv')
+    with open(csv_filename, 'w', newline='') as csvfile:
+        fieldnames = ['Protocol', 'Mean Latency (ms)', 'Improvement (%)']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
-    # Assuming each row corresponds to different figures like in your provided example
-    for i, (key, value) in enumerate(improvements.items(), start=1):
-        latex_table += f"        \\textbf{{Fig. {i}}} & {value:.2f}\\% \\\\ \n"
-        latex_table += "        \hline\n"
-
-    latex_table += r"""
-        \end{tabular}
-    \end{table}
-    """
-
-    print(latex_table)
-
-    # print(np.mean(basicLatency))
-    # print(np.mean(weightedLatency))
-    # print(np.mean(bestLeaderLatency))
-    # print(np.mean(bestLatency))
-    # print(np.mean(continuousLatency))
-    # print(np.mean(bestWeightsAndLeaderLatency))
+        writer.writeheader()
+        writer.writerow({'Protocol': 'Basic', 'Mean Latency (ms)': mean_basicLatency, 'Improvement (%)': 0})
+        writer.writerow({'Protocol': 'Weighted (Non-faulty)', 'Mean Latency (ms)': mean_weightedLatency,
+                         'Improvement (%)': improvements['Weighted (Non-faulty)']})
+        writer.writerow({'Protocol': 'Optimal Leader Weighted', 'Mean Latency (ms)': mean_bestLeaderLatency,
+                         'Improvement (%)': improvements['Optimal Leader Weighted']})
+        writer.writerow({'Protocol': 'Best', 'Mean Latency (ms)': mean_bestLatency, 'Improvement (%)': improvements['Best']})
+        writer.writerow({'Protocol': 'Continuous', 'Mean Latency (ms)': mean_continuousLatency, 'Improvement (%)': improvements['Continuous']})
+        writer.writerow({'Protocol': 'Optimal Leader Best', 'Mean Latency (ms)': mean_bestWeightsAndLeaderLatency,
+                         'Improvement (%)': improvements['Optimal Leader Best']})

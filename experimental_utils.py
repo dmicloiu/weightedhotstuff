@@ -165,3 +165,7 @@ def tweakNetworkTopology(n, networkTopology):
                 networkTopology[i][j] = networkTopology[j][i]
 
     return networkTopology
+
+## UTILS FOR OTHERS
+def calculate_improvement(basic, new):
+    return ((new - basic) / basic) * 100

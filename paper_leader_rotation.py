@@ -1,5 +1,5 @@
 import heapq
-import os
+import os, csv
 import math
 import matplotlib.pyplot as plt
 
@@ -202,7 +202,7 @@ def generateAllPossibleLeaderRotations(n, numberOfViews):
     return leaderRotations
 
 
-def experiment(output_directory, timestamp):
+def experiment(figures_directory, data_directory, timestamp):
     f = 1  # max num of faulty replicas
     delta = 1  # additional replicas
     n = 3 * f + 1 + delta  # total num of replicas
@@ -226,7 +226,6 @@ def experiment(output_directory, timestamp):
     numberOfViews = 4
 
     possibleLeaderRotations = generateAllPossibleLeaderRotations(n, numberOfViews)
-    print(possibleLeaderRotations)
 
     latencies = []
     for leaderRotation in possibleLeaderRotations:
@@ -237,8 +236,6 @@ def experiment(output_directory, timestamp):
             (Lnew_view, Lprepare, Lprecommit, Lcommit) = Lphases[viewNumber]
             latency += predictLatencyBasicHotstuff(n, f, Lnew_view, Lprepare, Lprecommit, Lcommit)
         latencies.append(latency)
-
-    print(latencies)
 
     # encode each unique rotation as a categorical variable
     rotation_strings = ['-'.join(map(str, rotation)) for rotation in possibleLeaderRotations]
@@ -278,5 +275,19 @@ def experiment(output_directory, timestamp):
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(output_directory, f"leader_rotation_impact_{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"leader_rotation_{timestamp}.png"))
+
+    # create csv file with all data
+    csv_filename = os.path.join(data_directory, f'leader_rotation_{timestamp}.csv')
+    with open(csv_filename, 'w', newline='') as csvfile:
+        fieldnames = ['Simulation', 'Leader Rotation', 'Latency (ms)']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for i in range(len(possibleLeaderRotations)):
+            writer.writerow({
+                'Simulation': i,
+                'Leader Rotation': possibleLeaderRotations[i],
+                'Latency (ms)': latencies[i],
+            })
 
