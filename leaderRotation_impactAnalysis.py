@@ -1,5 +1,5 @@
 import heapq
-import time
+import os
 import math
 import matplotlib.pyplot as plt
 
@@ -8,7 +8,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 
-def formQuorumWeighted(LMessageReceived, weights, quorumWeight):
+def formQuorumWeighted(n, LMessageReceived, weights, quorumWeight):
     heap = []
     for replicaIdx in range(n):
         heapq.heappush(heap, (LMessageReceived[replicaIdx], weights[replicaIdx]))
@@ -23,24 +23,24 @@ def formQuorumWeighted(LMessageReceived, weights, quorumWeight):
     return agreementTime
 
 
-def predictLatencyWeightedHotstuff(n, f, weights, Lnew_view, Lprepare, Lprecommit, Lcommit):
+def predictLatencyWeightedHotstuff(n, delta, f, weights, Lnew_view, Lprepare, Lprecommit, Lcommit):
     quorumWeight = 2 * (f + delta) + 1  # quorum formation condition
 
     # PREPARE phase -> leader waits for quorum formation with (n - f) NEW-VIEW messages from replicas
-    tPREPARE = formQuorumWeighted(Lnew_view, weights, quorumWeight)
+    tPREPARE = formQuorumWeighted(n, Lnew_view, weights, quorumWeight)
 
     # after quorum formation -> leader sends PREPARE messages
 
     # PRE-COMMIT phase -> leader waits for quorum formation with (n - f) PREPARE messages from replicas
-    tPRECOMIT = formQuorumWeighted(Lprepare, weights, quorumWeight)
+    tPRECOMIT = formQuorumWeighted(n, Lprepare, weights, quorumWeight)
 
     # after quorum formation -> leader sends PRE-COMMIT messages
 
     # COMMIT phase -> leader waits for quorum formation with (n - f) PRE-COMMIT messages from replicas
-    tCOMMIT = formQuorumWeighted(Lprecommit, weights, quorumWeight)
+    tCOMMIT = formQuorumWeighted(n, Lprecommit, weights, quorumWeight)
 
     # DECIDE phase -> leader waits for quorum formation with (n - f) COMMIT messages from replicas
-    tDECIDE = formQuorumWeighted(Lcommit, weights, quorumWeight)
+    tDECIDE = formQuorumWeighted(n, Lcommit, weights, quorumWeight)
 
     ## total time of a Hotstuff view run
     return (tPREPARE + tPRECOMIT + tCOMMIT + tDECIDE)
@@ -107,12 +107,6 @@ def predictLatencySimmulatedAnnealing(n, f, curWeights, Lnew_view, Lprepare, Lpr
     return latency / rounds
 
 def simulated_annealing(n, f, delta, Lnew_view, Lprepare, Lprecommit, Lcommit, suffix):
-    # for assessing the simulated annealing process
-    start = time.time()
-
-    # # declare a seed for this process
-    # random.seed(500)
-
     step = 0
     step_max = 1000000
     temp = 120
@@ -178,9 +172,6 @@ def simulated_annealing(n, f, delta, Lnew_view, Lprepare, Lprecommit, Lcommit, s
         temp = temp * (1 - theta)
         step += 1
 
-    end = time.time()
-    r_max, r_min = convert_bestweights_to_rmax_rmin(bestWeights, vmax)
-
     # print('--------------------------------')
     # print('--------' + suffix + ' Simulated annealing')
     # print('--------------------------------')
@@ -210,78 +201,82 @@ def generateAllPossibleLeaderRotations(n, numberOfViews):
 
     return leaderRotations
 
-f = 1  # max num of faulty replicas
-delta = 1  # additional replicas
-n = 3 * f + 1 + delta  # total num of replicas
 
-leaderID = 0
+def experiment(output_directory, timestamp):
+    f = 1  # max num of faulty replicas
+    delta = 1  # additional replicas
+    n = 3 * f + 1 + delta  # total num of replicas
 
-vmax = 1 + delta / f  # 2f replicas
-vmin = 1  # n - 2f replicas
+    vmax = 1 + delta / f  # 2f replicas
+    vmin = 1  # n - 2f replicas
 
-weights = []
-for i in range(2 * f):
-    weights.append(vmax)
-for i in range(n - 2 * f):
-    weights.append(vmin)
+    weights = []
+    for i in range(2 * f):
+        weights.append(vmax)
+    for i in range(n - 2 * f):
+        weights.append(vmin)
 
 
-networkTopology = [[9.74, 290.12, 222.89, 149.97, 284.75],
-                    [286.24, 2.21, 202.91, 210.16, 156.58],
-                    [226.65, 203.8, 6.01, 81.86, 80.49],
-                    [153.52, 210.18, 79.96, 5.1, 148.79],
-                    [288.76, 155.68, 79.87, 148.54, 3.97]]
+    networkTopology = [[9.74, 290.12, 222.89, 149.97, 284.75],
+                        [286.24, 2.21, 202.91, 210.16, 156.58],
+                        [226.65, 203.8, 6.01, 81.86, 80.49],
+                        [153.52, 210.18, 79.96, 5.1, 148.79],
+                        [288.76, 155.68, 79.87, 148.54, 3.97]]
 
-numberOfViews = 4
+    numberOfViews = 4
 
-possibleLeaderRotations = generateAllPossibleLeaderRotations(n, numberOfViews)
-print(possibleLeaderRotations)
+    possibleLeaderRotations = generateAllPossibleLeaderRotations(n, numberOfViews)
+    print(possibleLeaderRotations)
 
-latencies = []
-for leaderRotation in possibleLeaderRotations:
-    Lphases = generateExperimentLatencies(n, numberOfViews, networkTopology, leaderRotation)
+    latencies = []
+    for leaderRotation in possibleLeaderRotations:
+        Lphases = generateExperimentLatencies(n, numberOfViews, networkTopology, leaderRotation)
 
-    latency = 0
-    for viewNumber in range(numberOfViews):
-        (Lnew_view, Lprepare, Lprecommit, Lcommit) = Lphases[viewNumber]
-        latency += predictLatencyBasicHotstuff(n, f, Lnew_view, Lprepare, Lprecommit, Lcommit)
-    latencies.append(latency)
+        latency = 0
+        for viewNumber in range(numberOfViews):
+            (Lnew_view, Lprepare, Lprecommit, Lcommit) = Lphases[viewNumber]
+            latency += predictLatencyBasicHotstuff(n, f, Lnew_view, Lprepare, Lprecommit, Lcommit)
+        latencies.append(latency)
 
-print(latencies)
+    print(latencies)
 
-# encode each unique rotation as a categorical variable
-rotation_strings = ['-'.join(map(str, rotation)) for rotation in possibleLeaderRotations]
+    # encode each unique rotation as a categorical variable
+    rotation_strings = ['-'.join(map(str, rotation)) for rotation in possibleLeaderRotations]
 
-# create DataFrames
-df_rotations = pd.DataFrame(rotation_strings, columns=["rotation"])
-df_latencies = pd.DataFrame(latencies, columns=["latency"])
+    # create DataFrames
+    df_rotations = pd.DataFrame(rotation_strings, columns=["rotation"])
+    df_latencies = pd.DataFrame(latencies, columns=["latency"])
 
-# DEBUG purposes
-# print(df_rotations)
-# print(df_latencies)
+    # DEBUG purposes
+    # print(df_rotations)
+    # print(df_latencies)
 
-# combine the DataFrames
-df = pd.concat([df_rotations, df_latencies], axis=1)
+    # combine the DataFrames
+    df = pd.concat([df_rotations, df_latencies], axis=1)
 
-# encode the rotation strings to numerical values
-encoder = LabelEncoder()
-encoded_rotations = encoder.fit_transform(df['rotation'])
+    # encode the rotation strings to numerical values
+    encoder = LabelEncoder()
+    encoded_rotations = encoder.fit_transform(df['rotation'])
 
-# add encoded rotations to the DataFrame
-df['encoded_rotation'] = encoded_rotations
+    # add encoded rotations to the DataFrame
+    df['encoded_rotation'] = encoded_rotations
 
-# sort DataFrame by encoded_rotation for better visualization
-df_sorted = df.sort_values(by='encoded_rotation')
+    # sort DataFrame by encoded_rotation for better visualization
+    df_sorted = df.sort_values(by='encoded_rotation')
 
-plt.figure(figsize=(14, 8))
-scatter = plt.scatter(df_sorted['encoded_rotation'], df_sorted['latency'], c=df_sorted['latency'], cmap='coolwarm', edgecolor='k', s=100)
-plt.colorbar(scatter, label='Latency')
+    plt.figure(figsize=(14, 8))
+    scatter = plt.scatter(df_sorted['encoded_rotation'], df_sorted['latency'], c=df_sorted['latency'], cmap='coolwarm', edgecolor='k', s=100)
 
-# plt.title('Analysis of Leader Rotation impact on Latency in Hotstuff', fontsize=16)
-plt.xlabel('Encoded Leader Rotation', fontsize=14)
-plt.ylabel('Latency', fontsize=14)
-plt.xticks(fontsize=12)
-plt.yticks(fontsize=12)
-plt.grid(True)
-plt.show()
+    # add the gradual colorbar
+    cbar = plt.colorbar(scatter)
+    cbar.set_label('Latency [ms]', fontsize=18)
+    cbar.ax.yaxis.set_tick_params(labelsize=16)
+
+    # plt.title('Analysis of Leader Rotation impact on Latency in Hotstuff', fontsize=18)
+    plt.xlabel('Encoded Leader Rotation', fontsize=18)
+    plt.ylabel('Latency [ms]', fontsize=18)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.savefig(os.path.join(output_directory, f"leader_rotation_impact_{timestamp}.png"))
 
