@@ -226,9 +226,11 @@ plt.plot(simulationsNumbers, continuousLatenciesFaulty, color='purple', marker='
          label='Continuous')
 
 # plt.title('Analysis of Average Latency per View in Hotstuff', fontsize=16)
-plt.xlabel('Simulation number', fontsize=12)
-plt.ylabel('Latency [ms]', fontsize=12)
-plt.legend(fontsize=10)
+plt.xlabel('Simulation number', fontsize=16)
+plt.ylabel('Latency [ms]', fontsize=16)
+plt.xticks(fontsize=16)
+plt.yticks(fontsize=16)
+plt.legend(fontsize=16, loc='best')
 plt.grid(True, linestyle='--', alpha=0.7)
 plt.show()
 
