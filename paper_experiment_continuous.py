@@ -84,15 +84,15 @@ def experiment(figures_directory, data_directory, timestamp):
     simulation_results = list(results.values())
     simulation_percentages = list(percentages.values())
 
-    plt.figure(figsize=(12, 10))
+    plt.figure(figsize=(10, 8))
     bars = plt.barh(simulation_types, simulation_results, color=['red', 'orange', 'green'])
-    plt.xlabel('# Simulations', fontsize=14)
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
+    plt.xlabel('# Simulations', fontsize=16)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
 
     # Add values and percentages beside the bars
     for i, (result, percentage) in enumerate(zip(simulation_results, simulation_percentages)):
-        plt.text(result + 10, i, f'{result} ({percentage:.1f}%)', va='center', fontsize=12, style="oblique")
+        plt.text(result + 10, i, f'{result} ({percentage:.1f}%)', va='center', fontsize=14, style="oblique")
 
     # Improve the chart appearance
     plt.gca().invert_yaxis()  # Invert y-axis to display simulation types from top to bottom
