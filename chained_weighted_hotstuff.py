@@ -234,7 +234,7 @@ def chainedHotstuffBestAndOptimalLeader(n, f, delta, networkTopology, Lphases, n
     for i in range(2 * f):
         currentWeights[i] = 1 + delta / f
 
-    quorumWeight = quorumWeight = 2 * (f + delta) + 1
+    quorumWeight = 2 * (f + delta) + 1
 
     # starting leader rotation -> basic "round robin"
     currentLeaderRotation = getLeaderRotation(n, numberOfViews)
