@@ -173,6 +173,7 @@ plt.show()
 print("------------ EXPERIMENT 5 ------------")
 
 f_values = [1, 2, 3, 4]
+times = []
 continuous_weighted_hotstuff_performance = []
 numberOfViews = 1
 
@@ -197,4 +198,15 @@ for f in f_values:
     continuous_weighted_hotstuff_performance.append(continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation, numberOfViews))
     end = time.time()
 
+    times.append(end - start)
+
     print(f"Running a continunous Hotstuff simulation with {numberOfViews} views and {n} nodes took {end - start}")
+
+plt.figure(figsize=(10, 8))
+plt.plot(f_values, times, color='blue', marker='o', linestyle='-', linewidth=2, markersize=4)
+plt.xlabel('f value', fontsize=16)
+plt.ylabel('Time (s)', fontsize=16)
+plt.xticks(fontsize=14)
+plt.yticks(fontsize=14)
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.savefig("results/figures/times_continuous.pdf", bbox_inches='tight')
