@@ -74,20 +74,22 @@ def experiment(figures_directory, data_directory, timestamp):
              markersize=8,
              label='Optimal Leader Rotation Weighted')
     plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=4, markersize=8,
-             label='Best Weighted')
+             label='Best Assigned Weighted')
     # plt.plot(viewNumbers, bestLatencyFaulty, color='black', marker='d', linestyle=':', linewidth=2, markersize=6,
     #          label='Best Faulty')
     plt.plot(viewNumbers, bestLatencyBestLeader, color='magenta', marker='D', linestyle='--', linewidth=4, markersize=8,
-             label='(Optimal Leader Rotation + Best) Weighted')
+             label='(Optimal Leader Rotation + Best Assigned) Weighted')
 
     # plt.title('Analysis of Average Latency per View in Chained Hotstuff', fontsize=16)
     plt.xlabel('#views', fontsize=20)
     plt.ylabel('Average Latency per View [ms]', fontsize=20)
+    plt.ylim(400)
     plt.xticks(fontsize=17)
     plt.yticks(fontsize=17)
     plt.legend(fontsize=18)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(figures_directory, f"chained_{timestamp}.png"))
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_directory, f"chained_{timestamp}.pdf"), bbox_inches='tight')
 
     plt.figure(figsize=(14, 10))
     plt.plot(viewNumbers, weightedLatencyFaulty, color='orange', marker='s', linestyle='--', linewidth=4, markersize=8,
@@ -98,16 +100,18 @@ def experiment(figures_directory, data_directory, timestamp):
              label='Optimal Leader Rotation Weighted')
 
     plt.plot(viewNumbers, bestLatencyFaulty, color='green', marker='d', linestyle=':', linewidth=4, markersize=8,
-             label='Best Weighted')
+             label='Best Assigned Weighted')
 
     # plt.title('Analysis of Average Latency per View i Chained Hotstuff', fontsize=16)
     plt.xlabel('#views', fontsize=20)
     plt.ylabel('Average Latency per View [ms]', fontsize=20)
+    plt.ylim(400)
     plt.legend(fontsize=17)
     plt.xticks(fontsize=17)
     plt.yticks(fontsize=18)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(figures_directory, f"chained_faulty_{timestamp}.png"))
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_directory, f"chained_faulty_{timestamp}.pdf"), bbox_inches='tight')
 
     #  calculate mean values
     mean_basicLatency = np.mean(basicLatency)

@@ -275,7 +275,7 @@ def experiment(figures_directory, data_directory, timestamp):
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(figures_directory, f"leader_rotation_{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"leader_rotation_{timestamp}.pdf"), bbox_inches='tight')
 
     # create csv file with all data
     csv_filename = os.path.join(data_directory, f'leader_rotation_{timestamp}.csv')

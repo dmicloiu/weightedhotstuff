@@ -10,10 +10,10 @@ def experiment(figures_directory, data_directory, timestamp):
     leaderID = 0
 
     networkTopology = [[6.46, 357.86, 222.56, 146.94, 285.3],
-                       [361.26, 3.02, 197.7, 211.4, 156.33],
-                       [228.36, 198.29, 3.94, 79.35, 80.43],
-                       [152.98, 210.13, 78.42, 3.51, 147.77],
-                       [290.1, 155.81, 79.21, 147.82, 4.17]]
+                   [361.26, 3.02, 197.7, 211.4, 156.33],
+                   [228.36, 198.29, 3.94, 79.35, 80.43],
+                   [152.98, 210.13, 78.42, 3.51, 147.77],
+                   [290.1, 155.81, 79.21, 147.82, 4.17]]
 
 
     weights = set_up_weighting_scheme(networkTopology, delta, f)
@@ -59,7 +59,6 @@ def experiment(figures_directory, data_directory, timestamp):
         basicLatencyFaulty.append(latency)
 
         # run in WEIGHTED MODE
-
         latency = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weights, leaderRotation, type="weighted",
                                       numberOfViews=numberOfViews)
         latency /= numberOfViews
@@ -119,7 +118,7 @@ def experiment(figures_directory, data_directory, timestamp):
              label='Weighted')
 
     plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=4, markersize=8,
-             label='Best Weighted')
+             label='Best Assigned Weighted')
 
     plt.plot(viewNumbers, continuousLatency, color='red', marker='*', linestyle='-.', linewidth=4, markersize=8,
              label='Continuous Weighted')
@@ -128,22 +127,23 @@ def experiment(figures_directory, data_directory, timestamp):
              label='Optimal Leader Rotation Weighted')
 
     plt.plot(viewNumbers, bestWeightsAndLeaderLatency, color='magenta', marker='o', linestyle='--', linewidth=4, markersize=8,
-             label='(Optimal Leader Rotation + Best) Weighted')
+             label='(Optimal Leader Rotation + Best Assigned) Weighted')
 
     # plt.title('Analysis of Average Latency per View in Hotstuff', fontsize=16)
     plt.xlabel('#views', fontsize=20)
     plt.ylabel('Average Latency per View [ms]', fontsize=20)
-    plt.ylim(590, 920)
+    plt.ylim(560)
     plt.xticks(fontsize=17)
     plt.yticks(fontsize=17)
-    plt.legend(fontsize=18, loc='upper center', ncol=2)
+    plt.legend(fontsize=18, loc='lower center', ncol=2)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(figures_directory, f"{timestamp}.png"))
+    plt.tight_layout()
+    plt.savefig(os.path.join(figures_directory, f"{timestamp}.pdf"), bbox_inches='tight')
 
     # # Plot the analysis on the fallback efficiency on different types of Hotstuff
     plt.figure(figsize=(14, 10))
     plt.plot(viewNumbers, bestFallback, color='green', marker='d', linestyle=':', linewidth=4, markersize=8,
-             label='Best Weighted')
+             label='Best Assigned Weighted')
 
     plt.plot(viewNumbers, continuousFallback, color='red', marker='*', linestyle='-.', linewidth=4, markersize=8,
              label='Continuous Weighted')
@@ -155,17 +155,18 @@ def experiment(figures_directory, data_directory, timestamp):
              label='Optimal Leader Rotation Weighted')
 
     plt.plot(viewNumbers, bestWeightsAndLeaderLatencyFaulty, color='magenta', marker='o', linestyle='--', linewidth=4, markersize=8,
-             label='(Optimal Leader Rotation + Best) Weighted')
+             label='(Optimal Leader Rotation + Best Assigned) Weighted')
+
 
     # plt.title('Analysis of Fallback Latency Delay in Hotstuff', fontsize=16)
     plt.xlabel('#views', fontsize=20)
     plt.ylabel('Average Latency per View [ms]', fontsize=20)
     plt.xticks(fontsize=17)
     plt.yticks(fontsize=17)
-    plt.legend(fontsize=18, loc='lower center', ncol=2)
-    plt.ylim(520)
+    plt.legend(fontsize=16, loc='lower center', ncol=2)
+    plt.ylim(560)
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig(os.path.join(figures_directory, f"faulty_{timestamp}.png"))
+    plt.savefig(os.path.join(figures_directory, f"faulty_{timestamp}.pdf"), bbox_inches='tight')
 
     # calculate mean values
     mean_basicLatency = np.mean(basicLatency)
