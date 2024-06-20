@@ -27,6 +27,7 @@ parser.add_argument("--paper", action="store_true", default=False, help="Run exp
 parser.add_argument("--sim", type=int, default=1, help="Number of simulations.")
 parser.add_argument("--views-lower-bound", type=int, default=1, help="The lower bound of the number of views in a protocol run.")
 parser.add_argument("--views-upper-bound", type=int, default=1, help="The upper bound of the number of views in a protocol run.")
+parser.add_argument("--network-setup", type=int, default=0, help="Run experiment using the following network setup.")
 parser.add_argument("--f", type=int, default=1, help="Number of failures the system can withstand.")
 parser.add_argument("--delta", type=int, default=1, help="Number of additional replicas.")
 parser.add_argument("--faulty", action="store_true", default=False, help="Run experiments in faulty scenario.")
@@ -49,8 +50,18 @@ n = 3 * f + 1 + delta
 simulations = [i for i in range(args.sim)]
 viewNumbers = [i for i in range(args.views_lower_bound, args.views_upper_bound + 1)]
 
-## TO DO -> change to support multiple network topologies from AWS
-networkTopology = generateNetworkTopology(n, 0, 400)
+if(args.network_setup == 1):
+    # run experiment on the 5 nodes network topology used in the paper
+    networkTopology = paper_networkTopology
+elif(args.network_setup == 2):
+    # run experiment on 8 nodes network topology with cloudping data
+    networkTopology = two_faults_networkTopology
+elif(args.network_setup == 3):
+    # run experiment on 11 nodes network topology with cloudping data
+    networkTopology = three_faults_networkTopology
+else:
+    networkTopology = generateNetworkTopology(n, 0, 400)
+
 weights = set_up_weighting_scheme(networkTopology, delta, f)
 
 if args.all:
