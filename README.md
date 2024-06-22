@@ -1,93 +1,106 @@
-# 2024 - CSE3000 - Weighted Voting
+# Using Weighted Voting to Optimise Streamlined Blockchain Consensus Algorithms
 
 
 
-## Getting started
+## Overview
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+This is the accompanying repository to the paper **"Using Weighted Voting to Optimise Streamlined Blockchain Consensus Algorithms"**, developed for my Bachelor's Thesis at TU Delft. This research project was conducted as part of the CSE3000 course of the Computer Science and Engineering degree program, under the close supervision of [Jérémie Decouchant](https://www.tudelft.nl/ewi/over-de-faculteit/afdelingen/software-technology/distributed-systems/people/jeremie-decouchant) and [Rowdy Chotkan](https://www.tudelft.nl/ewi/over-de-faculteit/afdelingen/software-technology/distributed-systems/people/rowdy-chotkan).
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+The corresponding research paper is available [here]().
 
-## Add your files
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Current status
+Software development ended as of _26th of June, 2024 (Thesis defense day)._
 
-```
-cd existing_repo
-git remote add origin https://gitlab.ewi.tudelft.nl/rowdychotkan/2024-cse3000-weighted-voting.git
-git branch -M main
-git push -uf origin main
-```
+## Table of contents
+1. [Introduction](#Introduction)
+2. [Installation](#Installation)
+3. [Usage](#Usage)
+4. [Contact](#contact)
 
-## Integrate with your tools
+## Introduction
 
-- [ ] [Set up project integrations](https://gitlab.ewi.tudelft.nl/rowdychotkan/2024-cse3000-weighted-voting/-/settings/integrations)
+This project investigates the impact of weighted voting on streamlined consensus algorithms. Inspired by [AWARE's](https://doi.org/10.48550/arXiv.2011.01671) established self-monitoring (deterministic latency prediction) and self-optimising (leader relocation and weight distribution tuning) mechanism, this research applies weighted voting on the representative [Hotstuff](https://github.com/asonnino/hotstuff}).
 
-## Collaborate with your team
+The focus of this study lies on:
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+1. Developing two latency prediction models for **Weighted Hotstuff** and **Weighted Chained Hotstuff**, respectively.
+2. Analysing the impact of vote power assignment **(Best Assigned Weighted)** and leader rotation **(Optimal Leader Rotation Weighted)** optimisations by employing _Simulated Annealing_ algorithms.
+3. Introducing a generalisation from the discrete weighting paradigm (a novel continuous weighting scheme) through a Simulated Annealing approach in **Continuous Weighted Hotstuff.**
 
-## Test and Deploy
 
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+In short, the results provided in this research, together with the novel ideas described, are a founding base for the study of weighted voting in streamlined algorithms and its shift from the discrete model.
 
 ## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+To set up the project locally, follow these steps:
+1. Clone the repository
+2. Run the command below in terminal, in this way you create a virtualenv named `venv`, activate it and install all the required dependencies for running the project (note that we use python version 3.10).
+
+    `virtualenv venv && source venv/bin/activate && pip3 install -r requirements.txt`
+
+**The project should function properly now.**
 
 ## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+For running experiments you will use the `experiments.py` script, using commands of the following form, with various options that are explained below.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+`python3 experiments.py  --paper --continuous`
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Experiment options
+You can use the following options to change some of the parameters for running custom experiments.
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+#### Results from paper
+By running this commands the corresponding results can be found in root project under `./results/figures` and `./results/data`.
+- `--paper` runs `paper_experiment_hotstuff`
+- `--paper --chained` runs `paper_experiment_chained`
+- `--paper --continuous` runs `paper_experiment_continuous`
+- `--paper --lr` runs `paper_leader_rotation`
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+### Custom experiments
+By running self-tailored experiments the results will be gathered in a **CSV file** in `./results/data` for further analysis and processing.
+- `--chained` run experiments with Chained Hotstuff **(Without this flag, experiments run with Hotstuff by default!)**
+- `--sim` to change the number of protocol simulations (by default 1)
+- `--views-lower-bound` and `--views-upper-bound` to set for how many views we want to run a protocol for, they constitute an interval as we can run experiments over multiple views too (by default both 1)
+- `--f` to change the number of arbitrary failures the system can withstand
+- `--delta` to change the number of additional replicas in the system
+- `--faulty` to run experiments in faulty scenarios (the f replicas holding highest weight are considered idle)
+- `--all` runs all protocols, but you can also specify specific ones:
+  - `--basic` runs unweighted protocol
+  - `--weighted` runs weighted protocol
+  - `--best` runs Best Assigned Weighted protocol variant
+  - `--lr`runs Optimal Leader Rotation Weighted protocol variant
+  - `--best --lr` runs (Optimal Leader Rotation + Best Assigned) protocol variant
+  - `--continuous` runs Continuous Weighted Hotstuff
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Note that the network setup on which we run experiments can be also tweaked by using the `--network-setup` option. The framework offers the following variants (see more on `experimental_utils`:
+- zero (default value) - run experiments with matrix of withing clusters latency generated randomly between `0ms and 400ms`
+- one - run experiments on the network environment used in the paper (see `./results/figures/clusters`)
+- two - run experiments with `f = 2`on custom network topology with data retrieved from [cloudping](https://www.cloudping.co/grid/latency/timeframe/1D)
+- three - run experiments with `f = 3`on custom network topology with data retrieved from [cloudping](https://www.cloudping.co/grid/latency/timeframe/1D)
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## Project structure
 
-## License
-For open source projects, say how it is licensed.
+The main file through which you can run multiple experiments is `experiments.py`. However, this repository consists of multiple files which support the research of weighted voting on streamlined algorithms.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+### Latency prediction + Simulated Annealing  models
+1. `weighted_hotstuff`
+2. `chained_weighted_hotstuff`
+
+### Experiments included in paper
+1. `paper_leader_rotation` - analysis of **leader rotation** impact on the latency of **Hotstuff protocol** run
+2. `paper_experiment_hotstuff` - non-faulty and faulty simulation of **Weighted Hotstuff** and variants for computing **average latency per view** over multiple views
+3. `paper_experiment_chained` - non-faulty and faulty simulation of **Weighted Chained Hotstuff** and variants for computing **average latency per view** over multiple views
+4. `paper_experiment_continuous` - Best Assigned vs Continuous Weighted Hotstuff, latency difference analysis over 1000 simulations
+
+### Additional experiments 
+These files should be run directly from the IDE, not by using the experimental framework created.
+1. `experiments_hotstuff` - 4 experiments on assessing Weighted Hotstuff behaviour + analysis of Continuous Weighted Hotstuff convergence time for multiple f values
+2. `experimemts_chained_hotstuff` - 3 experiments of Weighted Chained Hotstuff and its optimisation variants
+
+### Other files
+1. `hotstuff` - skeleton of Basic Hotstuff implementation in python to observe protocol's communication phases 
+2. `experimental_utils` - utils used by the developed latency prediction models
+3. `map` - file generating the geographical map of clusters used in the paper experiments
+
+
+## Contact
+For any direct questions please feel free to contact [Diana Micloiu](mailto:d.micloiu@yahoo.com). For further questions or collaboration inquires with the Professor and Supervisor you can contact the [Data Intensive group](https://www.tudelft.nl/ewi/over-de-faculteit/afdelingen/software-technology/distributed-systems/contact).
