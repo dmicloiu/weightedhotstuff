@@ -47,18 +47,40 @@ f = args.f
 delta = args.delta
 n = 3 * f + 1 + delta
 
+# edge case for wrong use of flags
+if args.views_lower_bound > args.views_upper_bound:
+    args.views_upper_bound = args.views_lower_bound
+
 simulations = [i for i in range(args.sim)]
 viewNumbers = [i for i in range(args.views_lower_bound, args.views_upper_bound + 1)]
 
 if(args.network_setup == 1):
     # run experiment on the 5 nodes network topology used in the paper
     networkTopology = paper_networkTopology
+
+    # update parameters accordingly
+    f = 1
+    delta = 1
+    n = 3 * f + 1 + delta
+
 elif(args.network_setup == 2):
     # run experiment on 8 nodes network topology with cloudping data
     networkTopology = two_faults_networkTopology
+
+    # update parameters accordingly
+    f = 2
+    delta = 1
+    n = 3 * f + 1 + delta
+
 elif(args.network_setup == 3):
     # run experiment on 11 nodes network topology with cloudping data
     networkTopology = three_faults_networkTopology
+
+    # update parameters accordingly
+    f = 3
+    delta = 1
+    n = 3 * f + 1 + delta
+
 else:
     networkTopology = generateNetworkTopology(n, 0, 400)
 
