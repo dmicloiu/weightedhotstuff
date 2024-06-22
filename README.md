@@ -74,8 +74,8 @@ By running self-tailored experiments the results will be gathered in a **CSV fil
 Note that the network setup on which we run experiments can be also tweaked by using the `--network-setup` option. The framework offers the following variants (see more on `experimental_utils`:
 - zero (default value) - run experiments with matrix of withing clusters latency generated randomly between `0ms and 400ms`
 - one - run experiments on the network environment used in the paper (see `./results/figures/clusters`)
-- two - run experiments with `f = 2`on custom network topology with data retrieved from [cloudping](https://www.cloudping.co/grid/latency/timeframe/1D)
-- three - run experiments with `f = 3`on custom network topology with data retrieved from [cloudping](https://www.cloudping.co/grid/latency/timeframe/1D)
+- two - run experiments with `f = 2` on custom network topology with data retrieved from [cloudping](https://www.cloudping.co/grid/latency/timeframe/1D)
+- three - run experiments with `f = 3` on custom network topology with data retrieved from [cloudping](https://www.cloudping.co/grid/latency/timeframe/1D)
 
 ## Project structure
 
