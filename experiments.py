@@ -5,7 +5,6 @@ import paper_experiment_continuous
 import paper_leader_rotation
 import paper_experiment_chained
 import paper_experiment_hotstuff
-from experimental_utils import *
 from chained_weighted_hotstuff import *
 from weighted_hotstuff import *
 
