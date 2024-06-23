@@ -30,4 +30,4 @@ ax.set_facecolor('white')
 fig.patch.set_facecolor('white')
 ax.set_axis_off()
 
-plt.savefig("results/figures/map.pdf", bbox_inches='tight')
+plt.savefig("results/figures/clusters_map.pdf", bbox_inches='tight')

@@ -94,14 +94,11 @@ def experiment(figures_directory, data_directory, timestamp):
     for i, (result, percentage) in enumerate(zip(simulation_results, simulation_percentages)):
         plt.text(result + 10, i, f'{result} ({percentage:.1f}%)', va='center', fontsize=14, style="oblique")
 
-    # Improve the chart appearance
     plt.gca().invert_yaxis()  # Invert y-axis to display simulation types from top to bottom
     plt.grid(axis='x', linestyle='--', alpha=0.7)
     plt.gca().spines['top'].set_visible(False)
     plt.gca().spines['right'].set_visible(False)
     plt.tight_layout()
-
-    # Save the figure
     plt.savefig(os.path.join(figures_directory, f"continuous_bar_{timestamp}.pdf"), bbox_inches='tight')
 
     # create csv file with all data

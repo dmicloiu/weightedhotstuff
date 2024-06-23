@@ -7,7 +7,6 @@ def experiment(figures_directory, data_directory, timestamp):
     f = 1 # max num of faulty replicas
     delta = 1  # additional replicas
     n = 3 * f + 1 + delta  # total num of replicas
-    leaderID = 0
 
     networkTopology = [[6.46, 357.86, 222.56, 146.94, 285.3],
                    [361.26, 3.02, 197.7, 211.4, 156.33],
@@ -17,7 +16,7 @@ def experiment(figures_directory, data_directory, timestamp):
 
 
     weights = set_up_weighting_scheme(networkTopology, delta, f)
-    # print(awareWeights)
+
 
     basicLatency = []
     basicLatencyFaulty = []
@@ -73,9 +72,9 @@ def experiment(figures_directory, data_directory, timestamp):
         # run in BEST MODE
         (latency, latencyFaulty) = weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation, numberOfViews)
         latency /= numberOfViews
-        print("best: {}".format(latency))
+        print("best assigned: {}".format(latency))
         latencyFaulty /= numberOfViews
-        print("best faulty: {}".format(latencyFaulty))
+        print("best assigned faulty: {}".format(latencyFaulty))
         bestLatency.append(latency)
         bestFallback.append(latencyFaulty)
 

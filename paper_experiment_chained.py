@@ -68,19 +68,14 @@ def experiment(figures_directory, data_directory, timestamp):
              label='Basic')
     plt.plot(viewNumbers, weightedLatency, color='orange', marker='s', linestyle='--', linewidth=4, markersize=8,
              label='Weighted')
-    # plt.plot(viewNumbers, weightedLatencyFaulty, color='darkred', marker='s', linestyle='--', linewidth=2, markersize=6,
-    #          label='Faulty')
     plt.plot(viewNumbers, weightedLatencyBestLeader, color='blue', marker='*', linestyle='-.', linewidth=4,
              markersize=8,
              label='Optimal Leader Rotation Weighted')
     plt.plot(viewNumbers, bestLatency, color='green', marker='d', linestyle=':', linewidth=4, markersize=8,
              label='Best Assigned Weighted')
-    # plt.plot(viewNumbers, bestLatencyFaulty, color='black', marker='d', linestyle=':', linewidth=2, markersize=6,
-    #          label='Best Faulty')
     plt.plot(viewNumbers, bestLatencyBestLeader, color='magenta', marker='D', linestyle='--', linewidth=4, markersize=8,
              label='(Optimal Leader Rotation + Best Assigned) Weighted')
 
-    # plt.title('Analysis of Average Latency per View in Chained Hotstuff', fontsize=16)
     plt.xlabel('#views', fontsize=20)
     plt.ylabel('Average Latency per View [ms]', fontsize=20)
     plt.ylim(400)
@@ -102,7 +97,6 @@ def experiment(figures_directory, data_directory, timestamp):
     plt.plot(viewNumbers, bestLatencyFaulty, color='green', marker='d', linestyle=':', linewidth=4, markersize=8,
              label='Best Assigned Weighted')
 
-    # plt.title('Analysis of Average Latency per View i Chained Hotstuff', fontsize=16)
     plt.xlabel('#views', fontsize=20)
     plt.ylabel('Average Latency per View [ms]', fontsize=20)
     plt.ylim(400)

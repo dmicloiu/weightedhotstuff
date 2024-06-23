@@ -11,10 +11,7 @@ n = 3 * f + 1 + delta  # total num of replicas
 numberOfViews = 10 # total number of views in a Hotstuff simulation
 
 networkTopology = generateNetworkTopology(n, 0, 400)
-
-awareWeights = [1] * numberOfViews
-for i in range(2 * f):
-    awareWeights[i] = 1 + delta / f
+awareWeights = set_up_weighting_scheme(networkTopology, delta, f)
 
 
 print(f"All following experiments are run with n = {n}, number of views = {numberOfViews}")

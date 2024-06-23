@@ -4,7 +4,7 @@ from collections import deque
 from experimental_utils import *
 
 
-# use the same function for Quorum Formation on both basic and weighted Chained Hotstuff
+# use the same function for quorum formation on both basic and weighted Chained Hotstuff
 # we are using weights equal to 1 for the normal version
 def formQuorumChained(n, LMessageReceived, weights, quorumWeight, faulty_replicas={}):
     heap = []
@@ -23,7 +23,12 @@ def formQuorumChained(n, LMessageReceived, weights, quorumWeight, faulty_replica
 
     return agreementTime
 
-
+# there are 4 behaviours implemented for Chained Hotstuff
+# basic -> classic Chained Hotstuff behaviour (all weights are 1)
+# weighted -> just weighted version - f best connected and f worst connected are Vmax
+# best -> Best Assigned
+# weighted-leader -> Optimal Leader Rotation
+# best-leader -> (Optimal Leader Rotation + Best Assigned)
 def setupChainedHotstuffSimulation(n, f, delta, networkToplogy, Lphases, awareWeights, leaderRotation,
                                    type="basic", numberOfViews=1, faulty=False):
     # set up the weighting scheme
@@ -34,12 +39,10 @@ def setupChainedHotstuffSimulation(n, f, delta, networkToplogy, Lphases, awareWe
 
     # basic means normal Chained Hotstuff -> all weights are 1
     # weighted means weighted Chained Hotstuff with the Vmax/Vmin AWARE weighting scheme
-
     # AWARE weighting scheme
     weights = [1] * n
     if type == "weighted" or type == "weighted-leader":
         weights = awareWeights
-        # the rest of the weights are already Vmin = 1
 
     # consider the case we are making f replicas faulty
     faulty_replicas = set()
@@ -60,7 +63,8 @@ def setupChainedHotstuffSimulation(n, f, delta, networkToplogy, Lphases, awareWe
     return runChainedHotstuffSimulation(n, type, networkToplogy, Lphases, weights, quorumWeight, leaderRotation, numberOfViews,
                                         faulty_replicas)
 
-
+# function for predicting the latency of a protocol run (emulates Weighted Chained Hotstuff behaviour)
+# adapted from AWARE's deterministic latency prediction algorithm -> self-monitoring
 def runChainedHotstuffSimulation(n, type, networkTopology, Lphases, weights, quorumWeight, leaderRotation, numberOfViews,
                                  faulty_replicas={}):
     # keep track of the total latency prediction of the simulation
@@ -83,7 +87,7 @@ def runChainedHotstuffSimulation(n, type, networkTopology, Lphases, weights, quo
 
     return latency
 
-
+# function for processing a view run in Weighted Chained Hotstuff
 def processView(n, type, networkTopology, Lphases, viewNumber, leaderID, currentProcessingCommands, weights,
                 quorumWeight, faulty_replicas={}):
     # the total time it takes for performing the current phase for each command in the current view
@@ -93,6 +97,7 @@ def processView(n, type, networkTopology, Lphases, viewNumber, leaderID, current
         # get the latency vector of the leader -> latency of leader receiving the vote message from each replica
         Lphase = Lphases[blockProposalNumber][viewNumber - blockProposalNumber]
 
+        # if we optimise leader rotation -> latency vectors reported by the leader need to be generated
         if type == "best-leader" or type == "weighted-leader" or type == "basic-leader":
             Lphase = generateLatenciesToLeader(n, leaderID, networkTopology)[viewNumber - blockProposalNumber]
 
@@ -101,6 +106,7 @@ def processView(n, type, networkTopology, Lphases, viewNumber, leaderID, current
 
     return totalTime
 
+# Best Assigned Weighted Chained Hotstuff
 def runChainedHotstuffSimulatedAnnealing(n, f, delta, type, networkTopology, Lphases, quorumWeight, leaderRotation, numberOfViews,
                                          faulty_replicas={}):
     # for assessing the simulated annealing process
@@ -165,7 +171,7 @@ def runChainedHotstuffSimulatedAnnealing(n, f, delta, type, networkTopology, Lph
     # print(bestWeights)
     return bestLatency
 
-
+# Optimal Leader Rotation Weighted Chained Hotstuff
 def chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, type='basic', faulty=False):
     # for assessing the simulated annealing process
     start = time.time()
@@ -177,7 +183,7 @@ def chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWei
     theta = 0.0055
     t_min = 0.2
 
-    # starting leader rotation -> basic "round robin"
+    # starting leader rotation -> basic "round-robin"
     currentLeaderRotation = getLeaderRotation(n, numberOfViews)
 
     # get a baseline
@@ -194,7 +200,6 @@ def chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWei
         # generate "neighbouring" state for the leader rotation scheme
         # swap two leaders
         nextLeaderRotation = getLeaderRotation(n, numberOfViews, type="neighbouring")
-
         newLatency = setupChainedHotstuffSimulation(n, f, delta, networkTopology, Lphases, awareWeights, currentLeaderRotation,
                                                     type + "-leader", numberOfViews, faulty)
 
@@ -214,10 +219,10 @@ def chainedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWei
         step += 1
 
     # DEBUG purposes
-    # print(besbestLeaderRotation)
+    # print(bestLeaderRotation)
     return bestLatency
 
-
+# (Optimal Leader Rotation + Best Assigned) Weighted Chained Hotstuff
 def chainedHotstuffBestAndOptimalLeader(n, f, delta, networkTopology, Lphases, numberOfViews):
     # for assessing the simulated annealing process
     start = time.time()

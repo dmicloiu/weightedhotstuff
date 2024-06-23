@@ -2,7 +2,7 @@ import random
 import numpy as np
 
 
-## UTILS FOR REAL DATA OF NETWORK ENVIRONMENT COLLECTED FROM AWS CLOUDPING
+## UTILS FOR REAL DATA OF NETWORK ENVIRONMENT COLLECTED FROM AWS CLUSTERS
 # DATA GATHERED FROM CLOUDPING as of 2nd of June 2024 - 18:40 CEST
 
 # 5 nodes -> Cape Town (af-south-1), Hong Kong (ap-east-1), Canada (ca-central-1),
@@ -106,11 +106,11 @@ def generateLatenciesToLeader(n, leaderID, networkTopology):
 
     return (Lnew_view, Lprepare, Lprecommit, Lcommit)
 
-
+# function for generating a new leader rotation
 def getLeaderRotation(n, numberOfViews, type="round robin", currentLeaderRotation=None):
     fullRotation = [0] * n
 
-    # "round robin" style
+    # "round-robin" style
     for i in range(n):
         fullRotation[i] = i
 

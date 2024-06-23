@@ -16,9 +16,9 @@ def formQuorumWeighted(n, LMessageReceived, weights, quorumWeight):
     weight = 0
     agreementTime = 0
     while weight < quorumWeight:
-        (recivingTime, weightOfVote) = heapq.heappop(heap)
+        (receivingTime, weightOfVote) = heapq.heappop(heap)
         weight += weightOfVote  ## in Basic Hotstuff all relicas have the same weight
-        agreementTime = recivingTime
+        agreementTime = receivingTime
 
     return agreementTime
 

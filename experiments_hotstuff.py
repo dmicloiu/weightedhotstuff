@@ -1,5 +1,3 @@
-import numpy as np
-
 from experimental_utils import *
 from weighted_hotstuff import *
 import matplotlib.pyplot as plt
@@ -97,6 +95,7 @@ plt.legend()
 plt.grid(True)
 plt.show()
 
+
 ### EXPERIMENT 3
 print("------------ EXPERIMENT 3 ------------")
 
@@ -157,6 +156,7 @@ for _ in range(simulations):
 averageWeightedLatency /= simulations
 
 print(f"The average Weighted Hotstuff Latency is {averageWeightedLatency}.")
+print("\n")
 
 # Plot histogram
 plt.figure(figsize=(8, 6))

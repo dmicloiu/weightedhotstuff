@@ -1,5 +1,6 @@
 import hashlib
 import random
+import time
 
 ## define some data
 DATA = "SOME COMMAND"
@@ -128,6 +129,9 @@ class HotStuff:
     def simulate_round(self, maxViews):
         pending_newview = []
         for current_view in range(maxViews):
+            print(f"Start view {current_view}")
+
+
             # Set leader
             leader = random.choice(nodes)
             hotstuff.set_leader(leader)
@@ -152,6 +156,8 @@ class HotStuff:
 
                 ## broadcast prepare and then receive PREPARE votes from the replicas
                 self.network.broadcast(leader, Message("PREPARE", currentProposal, current_view, highQC))
+
+            print(f"PREPARE phase completed")
 
             ## PRE-COMMIT PHASE
 
@@ -183,6 +189,8 @@ class HotStuff:
                     # EACH REPLICA ALSO SENDS PRE-COMMIT MESSAGE -> 2nd check that each replica receives PREPARE message
                     leader.votes.append(Message("PRE-COMMIT", highQC.node, current_view, None))
 
+            print("PRE-COMMIT phase completed")
+
             ## COMMIT PHASE
             majority = self.nodes - self.faulty_replicas
             counter = 0
@@ -205,6 +213,7 @@ class HotStuff:
             ## in this case they are the same
             lockedQC = precommitQC
 
+            print("COMMIT phase completed")
 
             ## DECIDE PHASE
             majority = self.nodes - self.faulty_replicas
@@ -227,8 +236,12 @@ class HotStuff:
             ## FINAL BROADCAST DECIDE AND TRIGGER NEWVIEW
             self.network.broadcast(leader, Message("DECIDE", None, current_view, commitQC)) ## nothing happens here
 
+            print("DECIDE phase completed")
+
             for _ in self.network.nodes:
                 pending_newview.append(Message("NEW-VIEW", None, current_view, lockedQC))
+
+            print("----------------------")
 
 
 ## PARAMETERS THAT CAN BE TWEAKED

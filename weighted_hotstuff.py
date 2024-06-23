@@ -3,6 +3,7 @@ import numpy as np
 import heapq
 from experimental_utils import getLeaderRotation, generateLatenciesToLeader
 
+# function for generating all the possible subsets
 def all_subsets(n):
     current_subsets = []
 
@@ -20,6 +21,7 @@ def all_subsets(n):
 
     return current_subsets
 
+# check if the quorum is valid -> sum of weights equals or exceeds the required quorum weight
 def valid_quorum(subset_of_replicas, weights, quorumWeight):
     sum = 0
 
@@ -28,11 +30,11 @@ def valid_quorum(subset_of_replicas, weights, quorumWeight):
 
     return sum >= quorumWeight
 
+# function for constructing all the valid quorums given the required quorum weight and the weight distribution
 def construct_valid_quorums(n, weights, quorum_weight):
     valid_quorums = []
 
     subsets = []
-
     for i in range(n):
         subsets.append([i])
 
@@ -77,7 +79,6 @@ def compute_quorum_weight(n, f, delta, weights):
     # get all possible subsets which gather votes such that quorum is formed
     # check that they overlap by at least (f + 1) nodes -> CONSISTENCY
     valid_quorums = construct_valid_quorums(n, weights, quorum_weight)
-
     for i in range(len(valid_quorums)):
         quorum1 = valid_quorums[i]
         for j in range(i + 1, len(valid_quorums)):
@@ -89,12 +90,12 @@ def compute_quorum_weight(n, f, delta, weights):
                     overlap += 1
 
             if overlap < f + 1:
-                # it means that the current weighting scheme is violating quorum system rules
+                # it means that the current weighting scheme is violating quorum system rules -> invalid weight scheme
                 return -1
 
     return quorum_weight
 
-
+# function for computing the latency of achieving consensus
 def formQuorumWeighted(n, LMessageReceived, weights, quorumWeight, faulty_replicas={}):
     heap = []
     for replicaIdx in range(n):
@@ -105,7 +106,7 @@ def formQuorumWeighted(n, LMessageReceived, weights, quorumWeight, faulty_replic
     agreementTime = 0
     replicasUsed = 0
     while weight < quorumWeight:
-        # special case since we work with double numbers
+        # special case as we work with double numbers
         if len(heap) == 0 and abs(quorumWeight - weight) <= 1e-6:
             break
 
@@ -116,15 +117,20 @@ def formQuorumWeighted(n, LMessageReceived, weights, quorumWeight, faulty_replic
 
     return agreementTime
 
-
-def predictLatency(n, networkTopology, Lphases, weights, quorumWeight, type="basic", leaderRotation=[], faulty_replicas={}, numberOfViews=1):
+# function for predicting the latency of a protocol run (emulates Weighted Hotstuff behaviour)
+# adapted from AWARE's deterministic latency prediction algorithm -> self-monitoring
+def predictLatency(n, networkTopology, Lphases, weights, quorumWeight,
+                   type="basic", leaderRotation=[], faulty_replicas={}, numberOfViews=1):
     latency = 0
-    # predict latency for Hotstuff algorithm run with numberOfViews rounds
+    # predict latency for Weighted Hotstuff algorithm run with numberOfViews rounds
     for viewNumber in range(numberOfViews):
+        # get the latencies reported by the leader for receiving messages
         (Lnew_view, Lprepare, Lprecommit, Lcommit) = Lphases[viewNumber]
 
+        # if Optimal Leader Rotation protocol variant, latencies need to be generated every time
+        # since the leader scheme is changing
         if type == "optimalLeader":
-            (Lnew_view, Lprepare, Lprecommit, Lcommit) = generateLatenciesToLeader(n, leaderRotation[viewNumber], networkTopology)
+            (Lnew_view, Lprepare, Lprecommit, Lcommit) = (generateLatenciesToLeader(n, leaderRotation[viewNumber], networkTopology))
 
         # PREPARE phase -> leader waits for quorum formation with (n - f) NEW-VIEW messages from replicas
         tPREPARE = formQuorumWeighted(n, Lnew_view, weights, quorumWeight, faulty_replicas)
@@ -149,12 +155,13 @@ def predictLatency(n, networkTopology, Lphases, weights, quorumWeight, type="bas
 
 
 # there are 5 behaviours implemented for Hotstuff
-# basic -> all weights are 1, hence it emulates the classic hotstuff behaviour
-# weighted -> AWARE weighting scheme Hotstuff - first 2f are Vmax the rest are Vmin
+# basic -> all weights are 1, hence it emulates the classic Hotstuff behaviour
+# weighted -> AWARE weighting scheme Hotstuff - f best connected and f worst connected are Vmax
 # best -> AWARE weighting scheme Hotstuff - weights distributed with Simulated Annealing to minimise latency
-# optimalLeader -> AWARE weighting scheme Hotstuff - Simulated Annealing approach to finding the best leaderRotation
-# continuous -> continuous weighting scheme Hotstuff - Simulated Annealing approach to finding the best weighting scheme
-def runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weightingScheme, leaderRotation=[], type="basic", faulty=False, numberOfViews=1):
+# optimalLeader -> AWARE weighting scheme Hotstuff - Simulated Annealing approach to finding the best leader rotation
+# continuous -> continuous weighting scheme Hotstuff - Simulated Annealing approach to finding the continuous weighting scheme
+def runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weightingScheme,
+                        leaderRotation=[], type="basic", faulty=False, numberOfViews=1):
     quorumWeight = np.ceil((n + f + 1) / 2)  # quorum formation condition -> majority for basic weighting scheme
 
     if type == "weighted" or type == "best" or type == "optimalLeader":
@@ -163,6 +170,7 @@ def runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weightingScheme, 
     elif type == "continunous":
         quorumWeight = compute_quorum_weight(n, f, delta, weightingScheme)
 
+        # quorum weight -1 means that the continuous weighting scheme is invalid, hence it cannot be solution
         if quorumWeight == -1:
             return 1e6
 
@@ -181,6 +189,7 @@ def runWeightedHotstuff(n, f, delta, networkTopology, Lphases, weightingScheme, 
                           leaderRotation=leaderRotation, faulty_replicas=faulty_replicas, numberOfViews=numberOfViews)
 
 
+# Continuous Weighted Hotstuff
 def continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], numberOfViews=1):
     # start the timer to register the convergence time
     start = time.time()
@@ -200,8 +209,8 @@ def continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRota
     currentWeightingScheme = [1] * n
     currentLatency = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, currentWeightingScheme, leaderRotation,
                                          type="continunous", numberOfViews=numberOfViews)
-    currentLatencyWhenFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, currentWeightingScheme, leaderRotation,
-                                                   type="continunous", faulty=True, numberOfViews=numberOfViews)
+    currentLatencyWhenFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, currentWeightingScheme,
+                                                   leaderRotation, type="continunous", faulty=True, numberOfViews=numberOfViews)
 
     bestLatency = currentLatency
     bestLatencyWhenFaulty = currentLatencyWhenFaulty
@@ -220,6 +229,7 @@ def continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRota
         newLatency = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, nextWeightingScheme, leaderRotation,
                                          type="continunous", numberOfViews=numberOfViews)
 
+        # DEBUG PURPOSES
         # print(nextWeightingScheme)
 
         # if it performs better
@@ -231,6 +241,7 @@ def continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRota
                 jumps = jumps + 1
                 currentWeightingScheme = nextWeightingScheme
 
+        # non-faulty they perform the same, but see if in the faulty scenario it recovers faster
         if newLatency == bestLatency:
             newLatencyWhenFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, nextWeightingScheme, leaderRotation,
                                                        type="continunous", faulty=True, numberOfViews=numberOfViews)
@@ -245,12 +256,13 @@ def continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRota
             bestLatencyWhenFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, nextWeightingScheme, leaderRotation,
                                                         type="continunous", faulty=True, numberOfViews=numberOfViews)
 
-        # update the tempertaure and step counter
+        # update the temperature and step counter
         temp = temp * (1 - theta)
         step += 1
 
     end = time.time()
 
+    # DEBUG PURPOSES
     # print('--------------------------------')
     # print('-------- Simulated annealing --------')
     # print('--------------------------------')
@@ -263,6 +275,7 @@ def continuousWeightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRota
     return (bestLatency, bestLatencyWhenFaulty)
 
 
+# Best Assigned Weighted Hotstuff
 def weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], numberOfViews=1):
     # start the timer to register the convergence time
     start = time.time()
@@ -279,8 +292,6 @@ def weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], n
     for i in range(2 * f):
         currentWeights[i] = 1 + delta / f
 
-    # starting with leader replica 0
-    currentLeader = 0
     # get a baseline
     currentLatency = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, currentWeights, leaderRotation, type="best",
                                          numberOfViews=numberOfViews)
@@ -288,7 +299,6 @@ def weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], n
                                                    faulty=True, numberOfViews=numberOfViews)
 
     # variables to retain the best solution found
-    bestLeader = -1
     bestLatency = currentLatency
     bestLatencyWhenFaulty = currentLatencyWhenFaulty
     bestWeights = []
@@ -324,6 +334,7 @@ def weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], n
                 jumps = jumps + 1
                 currentWeights = newWeights
 
+        # non-faulty they perform the same, but see if in the faulty scenario it recovers faster
         if newLatency == bestLatency:
             newLatencyWhenFaulty = runWeightedHotstuff(n, f, delta, networkTopology, Lphases, newWeights, leaderRotation, type="best",
                                                        faulty=True, numberOfViews=numberOfViews)
@@ -343,6 +354,7 @@ def weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], n
 
     end = time.time()
 
+    # DEBUG PURPOSES
     # print('--------------------------------')
     # print('-------- Simulated annealing --------')
     # print('--------------------------------')
@@ -354,12 +366,10 @@ def weightedHotstuff(n, f, delta, networkTopology, Lphases, leaderRotation=[], n
     return (bestLatency, bestLatencyWhenFaulty)
 
 
+# Optimal Leader Weighted Hotstuff
 def weightedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, faulty=False):
     # for assessing the simulated annealing process
     start = time.time()
-
-    # # declare a seed for this process
-    # random.seed(300)
 
     step = 0
     step_max = 1000000
@@ -409,12 +419,10 @@ def weightedHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWe
     # print(besbestLeaderRotation)
     return bestLatency
 
+# (Optimal Leader + Best Assigned) Weighted Hotstuff
 def weightedBestHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awareWeights, numberOfViews, faulty=False):
     # for assessing the simulated annealing process
     start = time.time()
-
-    # # declare a seed for this process
-    # random.seed(300)
 
     step = 0
     step_max = 1000000
@@ -423,7 +431,7 @@ def weightedBestHotstuffOptimalLeader(n, f, delta, networkTopology, Lphases, awa
     theta = 0.0055
     t_min = 0.2
 
-    # starting leader rotation -> basic "round robin"
+    # starting leader rotation -> basic "round-robin"
     currentLeaderRotation = getLeaderRotation(n, numberOfViews)
     # starting weighting scheme -> AWARE scheme
     currentWeights = awareWeights

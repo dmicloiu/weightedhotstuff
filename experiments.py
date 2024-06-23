@@ -8,6 +8,7 @@ import paper_experiment_hotstuff
 from chained_weighted_hotstuff import *
 from weighted_hotstuff import *
 
+# create directories for result figures and data gathered in CSV files
 def create_directory(base_directory="results"):
     if not os.path.exists(base_directory):
         os.makedirs(base_directory)
@@ -20,6 +21,7 @@ def create_directory(base_directory="results"):
 
     return (figures_dir, data_dir)
 
+# options for running the experiments
 parser = argparse.ArgumentParser(description='Experiment simulations for Hotstuff')
 parser.add_argument("--chained", action="store_true", default=False, help="Run experiments with Chained Hotstuff.")
 parser.add_argument("--paper", action="store_true", default=False, help="Run experiments from paper.")
@@ -47,8 +49,12 @@ delta = args.delta
 n = 3 * f + 1 + delta
 
 # edge case for wrong use of flags
+if args.lr and args.views_lower_bound < n:
+    args.views_lower_bound = n
+
 if args.views_lower_bound > args.views_upper_bound:
     args.views_upper_bound = args.views_lower_bound
+
 
 simulations = [i for i in range(args.sim)]
 viewNumbers = [i for i in range(args.views_lower_bound, args.views_upper_bound + 1)]
